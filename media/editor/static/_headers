@@ -1,0 +1,25 @@
+/*.ttf
+  CF-Cache-Status: BYPASS
+  Cache-Control: public, max-age=31536000, immutable
+  Access-Control-Allow-Origin: *
+
+/*.ttf.br
+  CF-Cache-Status: BYPASS
+  Content-Type: font/ttf
+  Content-Encoding: br
+  Cache-Control: public, max-age=31536000, immutable
+  Access-Control-Allow-Origin: *
+
+/*.ttf.gz
+  CF-Cache-Status: BYPASS
+  Content-Type: font/ttf
+  Content-Encoding: gzip
+  Cache-Control: public, max-age=31536000, immutable
+  Access-Control-Allow-Origin: *
+
+/*.ttf.zst
+  CF-Cache-Status: BYPASS
+  Content-Type: font/ttf
+  Content-Encoding: zstd
+  Cache-Control: public, max-age=31536000, immutable
+  Access-Control-Allow-Origin: *

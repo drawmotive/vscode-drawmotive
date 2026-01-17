@@ -1,0 +1,54 @@
+﻿/* Theme: VibrantFlow */
+.vibrant-flow {
+    /* Theme Colors: Black + White + 5 Colors */
+    --color-black: #1B1B1B;
+    --color-white: #F7F7F7;
+    --color-primary-stroke: #007AFF;
+    --color-primary-fill: #B3D7FF;
+    --color-secondary-stroke: #5A6268;
+    --color-secondary-fill: #D6D8DB;
+    --color-accent-stroke: #FF4081;
+    --color-accent-fill: #FFC1DC;
+    --color-success-stroke: #34C759;
+    --color-success-fill: #B8EFB3;
+    --color-warning-stroke: #FFCC00;
+    --color-warning-fill: #FFF3BF;
+
+    /* Selection Styles */
+    --selection-stroke-color: rgba(0, 255, 0, 0.9);
+    --selection-fill-color: rgba(0, 255, 0, 0.5);
+    --selection-blend-mode: SrcOver;
+    --selection-stroke-color-reverse: rgba(255, 0, 0, 0.9);
+    --selection-fill-color-reverse: rgba(255, 0, 0, 0.5);
+    --selection-stroke-path-effect: solid;
+    --selection-stroke-path-effect-reverse: dashed, 5, 2;
+
+    /* Bound, Bounding Box, Styles */
+    --bound-stroke-color: rgba(0, 255, 255, 0.8);
+    --bound-blend-mode: SrcOver;
+    --bound-stroke-width: 1px;
+    --bound-stroke-path-effect: solid;
+
+    /* Grip Styles */
+    --grip-stroke-color: rgba(0, 0, 0, 0.8);
+    --grip-fill-color: rgba(0, 255, 255, 0.8);
+    --grip-blend-mode: SrcOver;
+    --grip-radius: 5px;
+    --grip-stroke-width: 1px;
+
+    /* Font Styles */
+    --font-family: "NotoSans-Regular";
+    --font-family-sketchy: "FuzzyBubbles-Regular";
+    --font-size-small: 12px;
+    --font-size-medium: 16px;
+    --font-size-large: 24px;
+
+    /* Line Styles */
+    --line-width-thin: 1px;
+    --line-width-normal: 2px;
+    --line-width-bold: 4px;
+    --stroke-cap: round;
+    --stroke-join: round;
+    --stroke-miter: 10;
+    --blend-mode: SrcOver;
+}

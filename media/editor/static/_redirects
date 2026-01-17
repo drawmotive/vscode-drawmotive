@@ -1,0 +1,3 @@
+/:font.ttf  /:font.ttf.br  200  Accept-Encoding=br
+/:font.ttf  /:font.ttf.gz  200  Accept-Encoding=gzip
+/:font.ttf  /:font.ttf.zst 200  Accept-Encoding=zstd

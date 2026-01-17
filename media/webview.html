@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'none';
+        script-src {{cspSource}} 'unsafe-eval' 'unsafe-inline' 'nonce-{{nonce}}';
+        style-src {{cspSource}} 'unsafe-inline';
+        img-src {{cspSource}} data: blob:;
+        font-src {{cspSource}};
+        connect-src {{cspSource}};
+        worker-src {{cspSource}} blob:;
+    ">
+    <title>Drawmotive Editor</title>
+    <base href="/"/>
+    <script nonce="{{nonce}}">
+        // Define the webview resource base URI for proper resource loading
+        window.__webviewResourceRoot = '{{editorUri}}';
+    </script>
+    <link rel="preload" href="{{editorUri}}/fonts/MaterialSymbolsRounded.woff2" as="font" type="font/woff2" crossorigin/>
+    <link href="{{editorUri}}/_content/Radzen.Blazor/css/standard-base.css" rel="stylesheet"/>
+    <link href="{{editorUri}}/css/site.css" rel="stylesheet"/>
+    <script src="{{editorUri}}/_content/Radzen.Blazor/Radzen.Blazor.js" nonce="{{nonce}}"></script>
+    <script src="{{editorUri}}/js/site.js" nonce="{{nonce}}"></script>
+    <script type="module" src="{{editorUri}}/_content/Microsoft.AspNetCore.Components.CustomElements/Microsoft.AspNetCore.Components.CustomElements.lib.module.js" nonce="{{nonce}}"></script>
+</head>
+<body>
+<div id="app">
+  <div class="loading-container">
+    <svg class="loading-progress">
+      <circle r="40%" cx="50%" cy="50%"/>
+      <circle r="40%" cx="50%" cy="50%"/>
+    </svg>
+    <div class="loading-progress-text"></div>
+  </div>
+</div>
+
+<script nonce="{{nonce}}">
+    const vscode = acquireVsCodeApi();
+
+    // Initialize editor callbacks for VSCode communication
+    window.editorCallbacks = {
+        handleSave: (exportData) => {
+            vscode.postMessage({
+                type: 'update',
+                data: exportData
+            });
+        }
+    };
+
+    // Listen for messages from extension
+    window.addEventListener('message', event => {
+        const message = event.data;
+
+        if (message.type === 'init' && window.editorInstance) {
+            // Load diagram data into editor
+            if (message.data.diagramData) {
+                window.editorInstance.loadData(message.data.diagramData);
+            }
+        }
+    });
+
+    // Notify extension that webview is ready
+    vscode.postMessage({ type: 'ready' });
+
+    // Blazor initialization - must be defined before blazor.webassembly.js loads
+    document.addEventListener("DOMContentLoaded", function() {
+      Blazor.start({
+        loadBootResource: function(type, name, defaultUri, integrity) {
+          // For dotnetjs resources, convert to absolute webview URI and return as string
+          if (type === 'dotnetjs') {
+            // Remove query parameters and resolve to webview URI
+            const baseUri = defaultUri.split('?')[0];
+            const resourceUri = new URL(baseUri, window.__webviewResourceRoot + '/').href;
+            return resourceUri;
+          }
+
+          // Resolve relative URIs to webview URIs for other resources
+          const resourceUri = new URL(defaultUri, window.__webviewResourceRoot + '/').href;
+
+          // For all other resources, use standard fetch with resolved URI
+          return fetch(resourceUri, {
+            cache: 'no-cache'
+          });
+        }
+      });
+    });
+</script>
+
+<script src="{{editorUri}}/_framework/blazor.webassembly.js" autostart="false" nonce="{{nonce}}"></script>
+<script src="{{editorUri}}/_content/Blazor-Analytics/blazor-analytics.js" nonce="{{nonce}}"></script>
+</body>
+</html>

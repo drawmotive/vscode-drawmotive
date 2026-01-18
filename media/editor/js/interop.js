@@ -49,6 +49,29 @@ export function saveAsFile(filename, bytesBase64) {
     document.body.removeChild(link);
 }
 
+// Resource fetching methods for VS Code mode
+// These bypass HttpClient to avoid System.Uri validation issues with file+.vscode-resource URLs
+
+export async function fetchBinary(url) {
+    console.log('[JS Fetch] Fetching binary:', url);
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const buffer = await response.arrayBuffer();
+    return new Uint8Array(buffer);
+}
+
+export async function fetchText(url) {
+    console.log('[JS Fetch] Fetching text:', url);
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.text();
+}
+
+
 export function getElementContent(element) {
   if (!element) return "";
     return element.innerText;

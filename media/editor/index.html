@@ -1,1 +1,154 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="description" content="A free web-based diagram, flowchart editor."/><title>Diagram Editor</title><link rel="preload" href="fonts/MaterialSymbolsRounded.woff2?v=1767449523" as="font" type="font/woff2" crossorigin/><script src="js/site.js?v=1767449523"></script><link href="_content/Radzen.Blazor/css/standard-base.css?v=1767449523" rel="stylesheet"/><link href="css/site.css?v=1767449523" rel="stylesheet"/><link href="Editor.Client.styles.css?v=1767449523" rel="stylesheet"/><script src="_content/Radzen.Blazor/Radzen.Blazor.js?v=1767449523"></script><script>document.addEventListener("DOMContentLoaded",function(){Blazor.start()})</script><script defer="defer" src="./static/js/main.5919c642.js?v=1767449523"></script><link href="./static/css/main.2f6150cc.css?v=1767449523" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div><script src="_framework/blazor.webassembly.js?v=1767449523" autostart="false"></script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Diagram Editor</title>
+
+    <!-- CRITICAL: Override document.baseURI BEFORE any other code runs -->
+    <script>
+        // This must be the FIRST script in <head> to intercept NavigationManager
+        // VS Code webviews use vscode-webview:// for page location but file+.vscode-resource for resources
+        // Blazor's NavigationManager needs a consistent, parseable URI
+
+        // Store the real page URI for debugging
+        window.__realPageUri = window.location.href;
+
+        // Override document.baseURI to return a fake localhost URI
+        Object.defineProperty(document, 'baseURI', {
+            get: function() {
+                return 'http://localhost/';
+            },
+            configurable: false,
+            enumerable: true
+        });
+
+        console.log('[VSCode Override] document.baseURI:', document.baseURI);
+        console.log('[VSCode Override] Real page URI:', window.__realPageUri);
+    </script>
+
+    <!-- Blazor and Radzen dependencies -->
+    <!-- These are converted to absolute CDN URIs by DrawmotiveEditorProvider -->
+    <link href="_content/Radzen.Blazor/css/standard-base.css" rel="stylesheet" />
+    <link href="Editor.Client.styles.css" rel="stylesheet" />
+    <link href="css/site.css" rel="stylesheet" />
+    <script src="js/site.js"></script>
+    <script src="_content/Radzen.Blazor/Radzen.Blazor.js"></script>
+
+    <!-- Capture the real CDN base URI from the first stylesheet -->
+    <script>
+        // After links are processed by DrawmotiveEditorProvider, extract the CDN URI
+        const firstLink = document.querySelector('link[rel="stylesheet"]');
+        if (firstLink) {
+            // Extract base URI from the converted absolute path
+            // e.g., "https://file+.vscode-resource.vscode-cdn.net/.../editor/_content/..."
+            //    -> "https://file+.vscode-resource.vscode-cdn.net/.../editor/"
+            const href = firstLink.href;
+            const cdnBase = href.substring(0, href.indexOf('/_content/') + 1);
+            window.__cdnBaseUri = cdnBase;
+            console.log('[VSCode] Captured CDN base URI:', window.__cdnBaseUri);
+        } else {
+            console.error('[VSCode] Could not capture CDN base URI from stylesheets');
+        }
+    </script>
+</head>
+<body>
+    <!-- Standard Blazor app -->
+    <div id="app">
+        <div class="loading-container">
+            <svg class="loading-progress">
+                <circle r="40%" cx="50%" cy="50%" />
+            </svg>
+            <div class="loading-progress-text">Loading Editor...</div>
+        </div>
+    </div>
+
+    <!-- Blazor WASM with autostart=false -->
+    <script src="_framework/blazor.webassembly.js" autostart="false"></script>
+
+    <!-- VS Code Integration Bridge -->
+    <script>
+        (function() {
+            // Set up VS Code environment for Blazor
+            window.vscodeEnvironment = {
+                fileId: '',
+                data: '',
+                isVSCode: true
+            };
+
+            const vscode = acquireVsCodeApi();
+
+            // Save callback for Blazor (called via JSInterop)
+            window.editorCallbacks = {
+                handleSave: (exportData) => {
+                    console.log('[VSCode] Sending save data to extension');
+                    vscode.postMessage({ type: 'update', data: exportData });
+                }
+            };
+
+            // Listen for messages FROM VS Code extension
+            window.addEventListener('message', event => {
+                const message = event.data;
+                console.log('[VSCode] Received message from extension:', message.type);
+
+                if (message.type === 'init') {
+                    // Store file info in environment
+                    window.vscodeEnvironment.fileId = message.data.fileId;
+                    if (message.data.diagramData) {
+                        window.vscodeEnvironment.data = message.data.diagramData;
+                    }
+
+                    // Start Blazor with resource redirect
+                    console.log('[VSCode] Starting Blazor with loadBootResource hook');
+                    console.log('[VSCode] document.baseURI:', document.baseURI);
+                    console.log('[VSCode] CDN base URI:', window.__cdnBaseUri);
+
+                    Blazor.start({
+                        loadBootResource: function (type, name, defaultUri, integrity) {
+                            // defaultUri will be wrong (http://localhost/...)
+                            // Use the CDN base URI we captured from stylesheets
+
+                            let correctUri;
+
+                            // Check if it's trying to load from fake localhost
+                            if (defaultUri.startsWith('http://localhost/')) {
+                                // Extract the relative path
+                                const relativePath = defaultUri.substring('http://localhost/'.length);
+                                // Combine with real CDN base
+                                correctUri = window.__cdnBaseUri + relativePath;
+                            } else if (defaultUri.startsWith('http')) {
+                                // Already absolute, use as-is
+                                correctUri = defaultUri;
+                            } else {
+                                // Relative path, combine with CDN base
+                                correctUri = window.__cdnBaseUri + defaultUri;
+                            }
+
+                            console.log(`[VSCode] Loading ${name} from ${correctUri}`);
+
+                            // For dotnetjs type, return URI directly
+                            if (type === 'dotnetjs') {
+                                return correctUri;
+                            }
+
+                            // For other resources, fetch with integrity check
+                            return fetch(correctUri, {
+                                cache: 'no-cache',
+                                integrity: integrity
+                            });
+                        }
+                    }).then(() => {
+                        console.log('[VSCode] Blazor started successfully');
+                    }).catch(err => {
+                        console.error('[VSCode] Blazor start failed:', err);
+                    });
+                }
+            });
+
+            // Initial ready signal
+            console.log('[VSCode] Sending initial ready signal');
+            vscode.postMessage({ type: 'ready' });
+        })();
+    </script>
+</body>
+</html>

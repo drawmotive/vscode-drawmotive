@@ -2,15 +2,23 @@ import * as vscode from 'vscode';
 import { readPngMetadata, writePngWithMetadata } from './pngMetadata';
 
 /**
- * Provider for Drawmotive custom editor that handles .draw.png files
+ * Provider for Drawmotive custom editor that handles .draw.png files (binary PNG format)
  */
-export class DrawmotiveEditorProvider implements vscode.CustomTextEditorProvider {
+export class DrawmotiveEditorProvider implements vscode.CustomReadonlyEditorProvider {
     private static readonly viewType = 'drawmotive.editor';
 
     constructor(private readonly context: vscode.ExtensionContext) {}
 
-    public async resolveCustomTextEditor(
-        document: vscode.TextDocument,
+    public async openCustomDocument(
+        uri: vscode.Uri,
+        openContext: vscode.CustomDocumentOpenContext,
+        _token: vscode.CancellationToken
+    ): Promise<vscode.CustomDocument> {
+        return { uri, dispose: () => {} };
+    }
+
+    public async resolveCustomEditor(
+        document: vscode.CustomDocument,
         webviewPanel: vscode.WebviewPanel,
         _token: vscode.CancellationToken
     ): Promise<void> {
@@ -29,10 +37,10 @@ export class DrawmotiveEditorProvider implements vscode.CustomTextEditorProvider
             async (message) => {
                 switch (message.type) {
                     case 'ready':
-                        await this.updateWebview(document, webviewPanel.webview);
+                        await this.updateWebview(document.uri, webviewPanel.webview);
                         break;
                     case 'update':
-                        await this.updateDocument(document, message.data);
+                        await this.updateDocument(document.uri, message.data);
                         break;
                     case 'error':
                         vscode.window.showErrorMessage(`Drawmotive: ${message.error}`);
@@ -43,30 +51,34 @@ export class DrawmotiveEditorProvider implements vscode.CustomTextEditorProvider
             this.context.subscriptions
         );
 
-        // Update webview when document changes
-        const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument((e) => {
-            if (e.document.uri.toString() === document.uri.toString()) {
-                this.updateWebview(document, webviewPanel.webview);
-            }
+        // Watch for external file changes
+        const watcher = vscode.workspace.createFileSystemWatcher(
+            new vscode.RelativePattern(document.uri, '*')
+        );
+        watcher.onDidChange(async () => {
+            await this.updateWebview(document.uri, webviewPanel.webview);
         });
         webviewPanel.onDidDispose(() => {
-            changeDocumentSubscription.dispose();
+            watcher.dispose();
         });
     }
 
-    private async updateWebview(document: vscode.TextDocument, webview: vscode.Webview): Promise<void> {
+    private async updateWebview(fileUri: vscode.Uri, webview: vscode.Webview): Promise<void> {
         try {
-            const fileUri = document.uri;
+            // Read file as binary PNG data
             const fileData = await vscode.workspace.fs.readFile(fileUri);
+            console.log(`[DrawmotiveEditorProvider] Read file: ${fileData.length} bytes`);
 
             let diagramData = '';
             if (fileData.length > 0) {
                 const metadata = await readPngMetadata(Buffer.from(fileData));
+                console.log(`[DrawmotiveEditorProvider] Extracted metadata: ${metadata ? metadata.substring(0, 100) + '...' : 'null'}`);
                 if (metadata) {
                     diagramData = metadata;
                 }
             }
 
+            console.log(`[DrawmotiveEditorProvider] Sending init message with diagramData length: ${diagramData.length}`);
             webview.postMessage({
                 type: 'init',
                 data: {
@@ -84,32 +96,26 @@ export class DrawmotiveEditorProvider implements vscode.CustomTextEditorProvider
         }
     }
 
-    private async updateDocument(document: vscode.TextDocument, data: any): Promise<void> {
+    private async updateDocument(fileUri: vscode.Uri, data: any): Promise<void> {
         try {
+            console.log('[DrawmotiveEditorProvider] updateDocument called with data:', data);
             const { raw, png } = data;
 
             if (!raw || !png) {
+                console.error('[DrawmotiveEditorProvider] Missing data fields:', { hasRaw: !!raw, hasPng: !!png });
                 throw new Error('Missing required data fields (raw or png)');
             }
 
+            console.log(`[DrawmotiveEditorProvider] Received raw data length: ${raw.length}, png data length: ${png.length}`);
             const pngBuffer = Buffer.from(png, 'base64');
+            console.log(`[DrawmotiveEditorProvider] Decoded PNG buffer: ${pngBuffer.length} bytes`);
+
             const finalPngBuffer = await writePngWithMetadata(pngBuffer, raw);
+            console.log(`[DrawmotiveEditorProvider] Final PNG with metadata: ${finalPngBuffer.length} bytes`);
 
-            const edit = new vscode.WorkspaceEdit();
-            const fullRange = new vscode.Range(
-                document.positionAt(0),
-                document.positionAt(document.getText().length)
-            );
-
-            const base64Content = finalPngBuffer.toString('base64');
-            edit.replace(document.uri, fullRange, base64Content);
-
-            const success = await vscode.workspace.applyEdit(edit);
-            if (!success) {
-                throw new Error('Failed to apply edit to document');
-            }
-
-            await document.save();
+            // Write binary PNG data directly to file
+            await vscode.workspace.fs.writeFile(fileUri, finalPngBuffer);
+            console.log('[DrawmotiveEditorProvider] File written successfully');
         } catch (error) {
             console.error('Error updating document:', error);
             vscode.window.showErrorMessage(`Failed to save diagram: ${error}`);

@@ -82,7 +82,9 @@
             window.editorCallbacks = {
                 handleSave: (exportData) => {
                     console.log('[VSCode] Sending save data to extension');
-                    vscode.postMessage({ type: 'update', data: exportData });
+                    // Parse JSON string from Blazor (contains png, raw, pngWidth, pngHeight, confluenceId)
+                    const parsedData = typeof exportData === 'string' ? JSON.parse(exportData) : exportData;
+                    vscode.postMessage({ type: 'update', data: parsedData });
                 }
             };
 

@@ -1,1 +1,497 @@
-(()=>{"use strict";var t={23(t){t.exports=require("util")},43(t){let e=t.exports=function(t){this._buffer=t,this._reads=[]};e.prototype.read=function(t,e){this._reads.push({length:Math.abs(t),allowLess:t<0,func:e})},e.prototype.process=function(){for(;this._reads.length>0&&this._buffer.length;){let t=this._reads[0];if(!this._buffer.length||!(this._buffer.length>=t.length||t.allowLess))break;{this._reads.shift();let e=this._buffer;this._buffer=e.slice(t.length),t.func.call(this,e.slice(0,t.length))}}if(this._reads.length>0)throw new Error("There are some read requests waitng on finished stream");if(this._buffer.length>0)throw new Error("unrecognised content at end of stream")}},47(t,e,i){let r=i(23),n=i(203),o=t.exports=function(){n.call(this),this._buffers=[],this._buffered=0,this._reads=[],this._paused=!1,this._encoding="utf8",this.writable=!0};r.inherits(o,n),o.prototype.read=function(t,e){this._reads.push({length:Math.abs(t),allowLess:t<0,func:e}),process.nextTick(function(){this._process(),this._paused&&this._reads&&this._reads.length>0&&(this._paused=!1,this.emit("drain"))}.bind(this))},o.prototype.write=function(t,e){if(!this.writable)return this.emit("error",new Error("Stream not writable")),!1;let i;return i=Buffer.isBuffer(t)?t:Buffer.from(t,e||this._encoding),this._buffers.push(i),this._buffered+=i.length,this._process(),this._reads&&0===this._reads.length&&(this._paused=!0),this.writable&&!this._paused},o.prototype.end=function(t,e){t&&this.write(t,e),this.writable=!1,this._buffers&&(0===this._buffers.length?this._end():(this._buffers.push(null),this._process()))},o.prototype.destroySoon=o.prototype.end,o.prototype._end=function(){this._reads.length>0&&this.emit("error",new Error("Unexpected end of input")),this.destroy()},o.prototype.destroy=function(){this._buffers&&(this.writable=!1,this._reads=null,this._buffers=null,this.emit("close"))},o.prototype._processReadAllowingLess=function(t){this._reads.shift();let e=this._buffers[0];e.length>t.length?(this._buffered-=t.length,this._buffers[0]=e.slice(t.length),t.func.call(this,e.slice(0,t.length))):(this._buffered-=e.length,this._buffers.shift(),t.func.call(this,e))},o.prototype._processRead=function(t){this._reads.shift();let e=0,i=0,r=Buffer.alloc(t.length);for(;e<t.length;){let n=this._buffers[i++],o=Math.min(n.length,t.length-e);n.copy(r,e,0,o),e+=o,o!==n.length&&(this._buffers[--i]=n.slice(o))}i>0&&this._buffers.splice(0,i),this._buffered-=t.length,t.func.call(this,r)},o.prototype._process=function(){try{for(;this._buffered>0&&this._reads&&this._reads.length>0;){let t=this._reads[0];if(t.allowLess)this._processReadAllowingLess(t);else{if(!(this._buffered>=t.length))break;this._processRead(t)}}this._buffers&&!this.writable&&this._end()}catch(t){this.emit("error",t)}}},58(t,e,i){let r=i(691),n=i(844),o=i(283),s=i(810),a=i(106),h=t.exports=function(t){if(this._options=t,t.deflateChunkSize=t.deflateChunkSize||32768,t.deflateLevel=null!=t.deflateLevel?t.deflateLevel:9,t.deflateStrategy=null!=t.deflateStrategy?t.deflateStrategy:3,t.inputHasAlpha=null==t.inputHasAlpha||t.inputHasAlpha,t.deflateFactory=t.deflateFactory||a.createDeflate,t.bitDepth=t.bitDepth||8,t.colorType="number"==typeof t.colorType?t.colorType:r.COLORTYPE_COLOR_ALPHA,t.inputColorType="number"==typeof t.inputColorType?t.inputColorType:r.COLORTYPE_COLOR_ALPHA,-1===[r.COLORTYPE_GRAYSCALE,r.COLORTYPE_COLOR,r.COLORTYPE_COLOR_ALPHA,r.COLORTYPE_ALPHA].indexOf(t.colorType))throw new Error("option color type:"+t.colorType+" is not supported at present");if(-1===[r.COLORTYPE_GRAYSCALE,r.COLORTYPE_COLOR,r.COLORTYPE_COLOR_ALPHA,r.COLORTYPE_ALPHA].indexOf(t.inputColorType))throw new Error("option input color type:"+t.inputColorType+" is not supported at present");if(8!==t.bitDepth&&16!==t.bitDepth)throw new Error("option bit depth:"+t.bitDepth+" is not supported at present")};h.prototype.getDeflateOptions=function(){return{chunkSize:this._options.deflateChunkSize,level:this._options.deflateLevel,strategy:this._options.deflateStrategy}},h.prototype.createDeflate=function(){return this._options.deflateFactory(this.getDeflateOptions())},h.prototype.filterData=function(t,e,i){let n=o(t,e,i,this._options),a=r.COLORTYPE_TO_BPP_MAP[this._options.colorType];return s(n,e,i,this._options,a)},h.prototype._packChunk=function(t,e){let i=e?e.length:0,r=Buffer.alloc(i+12);return r.writeUInt32BE(i,0),r.writeUInt32BE(t,4),e&&e.copy(r,8),r.writeInt32BE(n.crc32(r.slice(4,r.length-4)),r.length-4),r},h.prototype.packGAMA=function(t){let e=Buffer.alloc(4);return e.writeUInt32BE(Math.floor(t*r.GAMMA_DIVISION),0),this._packChunk(r.TYPE_gAMA,e)},h.prototype.packIHDR=function(t,e){let i=Buffer.alloc(13);return i.writeUInt32BE(t,0),i.writeUInt32BE(e,4),i[8]=this._options.bitDepth,i[9]=this._options.colorType,i[10]=0,i[11]=0,i[12]=0,this._packChunk(r.TYPE_IHDR,i)},h.prototype.packIDAT=function(t){return this._packChunk(r.TYPE_IDAT,t)},h.prototype.packIEND=function(){return this._packChunk(r.TYPE_IEND,null)}},73(t,e,i){let r=i(23),n=i(203),o=i(518),s=i(103),a=i(625),h=e.PNG=function(t){n.call(this),t=t||{},this.width=0|t.width,this.height=0|t.height,this.data=this.width>0&&this.height>0?Buffer.alloc(4*this.width*this.height):null,t.fill&&this.data&&this.data.fill(0),this.gamma=0,this.readable=this.writable=!0,this._parser=new o(t),this._parser.on("error",this.emit.bind(this,"error")),this._parser.on("close",this._handleClose.bind(this)),this._parser.on("metadata",this._metadata.bind(this)),this._parser.on("gamma",this._gamma.bind(this)),this._parser.on("parsed",function(t){this.data=t,this.emit("parsed",t)}.bind(this)),this._packer=new s(t),this._packer.on("data",this.emit.bind(this,"data")),this._packer.on("end",this.emit.bind(this,"end")),this._parser.on("close",this._handleClose.bind(this)),this._packer.on("error",this.emit.bind(this,"error"))};r.inherits(h,n),h.sync=a,h.prototype.pack=function(){return this.data&&this.data.length?(process.nextTick(function(){this._packer.pack(this.data,this.width,this.height,this.gamma)}.bind(this)),this):(this.emit("error","No data provided"),this)},h.prototype.parse=function(t,e){if(e){let t,i;t=function(t){this.removeListener("error",i),this.data=t,e(null,this)}.bind(this),i=function(i){this.removeListener("parsed",t),e(i,null)}.bind(this),this.once("parsed",t),this.once("error",i)}return this.end(t),this},h.prototype.write=function(t){return this._parser.write(t),!0},h.prototype.end=function(t){this._parser.end(t)},h.prototype._metadata=function(t){this.width=t.width,this.height=t.height,this.emit("metadata",t)},h.prototype._gamma=function(t){this.gamma=t},h.prototype._handleClose=function(){this._parser.writable||this._packer.readable||this.emit("close")},h.bitblt=function(t,e,i,r,n,o,s,a){if(r|=0,n|=0,o|=0,s|=0,a|=0,(i|=0)>t.width||r>t.height||i+n>t.width||r+o>t.height)throw new Error("bitblt reading outside image");if(s>e.width||a>e.height||s+n>e.width||a+o>e.height)throw new Error("bitblt writing outside image");for(let h=0;h<o;h++)t.data.copy(e.data,(a+h)*e.width+s<<2,(r+h)*t.width+i<<2,(r+h)*t.width+i+n<<2)},h.prototype.bitblt=function(t,e,i,r,n,o,s){return h.bitblt(this,t,e,i,r,n,o,s),this},h.adjustGamma=function(t){if(t.gamma){for(let e=0;e<t.height;e++)for(let i=0;i<t.width;i++){let r=t.width*e+i<<2;for(let e=0;e<3;e++){let i=t.data[r+e]/255;i=Math.pow(i,1/2.2/t.gamma),t.data[r+e]=Math.round(255*i)}}t.gamma=0}},h.prototype.adjustGamma=function(){h.adjustGamma(this)}},83(t,e,i){let r=!0,n=i(106),o=i(825);n.deflateSync||(r=!1);let s=i(43),a=i(294),h=i(395),l=i(724),f=i(256);t.exports=function(t,e){if(!r)throw new Error("To use the sync capability of this library in old node versions, please pin pngjs to v2.3.0");let i,c,p,u=[],d=new s(t),_=new h(e,{read:d.read.bind(d),error:function(t){i=t},metadata:function(t){c=t},gamma:function(t){p=t},palette:function(t){c.palette=t},transColor:function(t){c.transColor=t},inflateData:function(t){u.push(t)},simpleTransparency:function(){c.alpha=!0}});if(_.start(),d.process(),i)throw i;let w,g=Buffer.concat(u);if(u.length=0,c.interlace)w=n.inflateSync(g);else{let t=(1+(c.width*c.bpp*c.depth+7>>3))*c.height;w=o(g,{chunkSize:t,maxLength:t})}if(g=null,!w||!w.length)throw new Error("bad png - invalid inflate data response");let b=a.process(w,c);g=null;let y=l.dataToBitMap(b,c);b=null;let m=f(y,c,e.skipRescale);return c.data=m,c.gamma=p||0,c}},103(t,e,i){let r=i(23),n=i(203),o=i(691),s=i(58),a=t.exports=function(t){n.call(this);let e=t||{};this._packer=new s(e),this._deflate=this._packer.createDeflate(),this.readable=!0};r.inherits(a,n),a.prototype.pack=function(t,e,i,r){this.emit("data",Buffer.from(o.PNG_SIGNATURE)),this.emit("data",this._packer.packIHDR(e,i)),r&&this.emit("data",this._packer.packGAMA(r));let n=this._packer.filterData(t,e,i);this._deflate.on("error",this.emit.bind(this,"error")),this._deflate.on("data",function(t){this.emit("data",this._packer.packIDAT(t))}.bind(this)),this._deflate.on("end",function(){this.emit("data",this._packer.packIEND()),this.emit("end")}.bind(this)),this._deflate.end(n)}},106(t){t.exports=require("zlib")},181(t){t.exports=require("buffer")},203(t){t.exports=require("stream")},256(t){t.exports=function(t,e,i=!1){let r=e.depth,n=e.width,o=e.height,s=e.colorType,a=e.transColor,h=e.palette,l=t;return 3===s?function(t,e,i,r,n){let o=0;for(let s=0;s<r;s++)for(let r=0;r<i;r++){let i=n[t[o]];if(!i)throw new Error("index "+t[o]+" not in palette");for(let t=0;t<4;t++)e[o+t]=i[t];o+=4}}(t,l,n,o,h):(a&&function(t,e,i,r,n){let o=0;for(let s=0;s<r;s++)for(let r=0;r<i;r++){let i=!1;if(1===n.length?n[0]===t[o]&&(i=!0):n[0]===t[o]&&n[1]===t[o+1]&&n[2]===t[o+2]&&(i=!0),i)for(let t=0;t<4;t++)e[o+t]=0;o+=4}}(t,l,n,o,a),8===r||i||(16===r&&(l=Buffer.alloc(n*o*4)),function(t,e,i,r,n){let o=Math.pow(2,n)-1,s=0;for(let n=0;n<r;n++)for(let r=0;r<i;r++){for(let i=0;i<4;i++)e[s+i]=Math.floor(255*t[s+i]/o+.5);s+=4}}(t,l,n,o,r))),l}},268(t,e,i){let r=!0,n=i(106);n.deflateSync||(r=!1);let o=i(691),s=i(58);t.exports=function(t,e){if(!r)throw new Error("To use the sync capability of this library in old node versions, please pin pngjs to v2.3.0");let i=new s(e||{}),a=[];a.push(Buffer.from(o.PNG_SIGNATURE)),a.push(i.packIHDR(t.width,t.height)),t.gamma&&a.push(i.packGAMA(t.gamma));let h=i.filterData(t.data,t.width,t.height),l=n.deflateSync(h,i.getDeflateOptions());if(h=null,!l||!l.length)throw new Error("bad png - invalid compressed data response");return a.push(i.packIDAT(l)),a.push(i.packIEND()),Buffer.concat(a)}},283(t,e,i){let r=i(691);t.exports=function(t,e,i,n){let o=-1!==[r.COLORTYPE_COLOR_ALPHA,r.COLORTYPE_ALPHA].indexOf(n.colorType);if(n.colorType===n.inputColorType){let e=function(){let t=new ArrayBuffer(2);return new DataView(t).setInt16(0,256,!0),256!==new Int16Array(t)[0]}();if(8===n.bitDepth||16===n.bitDepth&&e)return t}let s=16!==n.bitDepth?t:new Uint16Array(t.buffer),a=255,h=r.COLORTYPE_TO_BPP_MAP[n.inputColorType];4!==h||n.inputHasAlpha||(h=3);let l=r.COLORTYPE_TO_BPP_MAP[n.colorType];16===n.bitDepth&&(a=65535,l*=2);let f=Buffer.alloc(e*i*l),c=0,p=0,u=n.bgColor||{};function d(){let t,e,i,h=a;switch(n.inputColorType){case r.COLORTYPE_COLOR_ALPHA:h=s[c+3],t=s[c],e=s[c+1],i=s[c+2];break;case r.COLORTYPE_COLOR:t=s[c],e=s[c+1],i=s[c+2];break;case r.COLORTYPE_ALPHA:h=s[c+1],t=s[c],e=t,i=t;break;case r.COLORTYPE_GRAYSCALE:t=s[c],e=t,i=t;break;default:throw new Error("input color type:"+n.inputColorType+" is not supported at present")}return n.inputHasAlpha&&(o||(h/=a,t=Math.min(Math.max(Math.round((1-h)*u.red+h*t),0),a),e=Math.min(Math.max(Math.round((1-h)*u.green+h*e),0),a),i=Math.min(Math.max(Math.round((1-h)*u.blue+h*i),0),a))),{red:t,green:e,blue:i,alpha:h}}void 0===u.red&&(u.red=a),void 0===u.green&&(u.green=a),void 0===u.blue&&(u.blue=a);for(let t=0;t<i;t++)for(let t=0;t<e;t++){let t=d();switch(n.colorType){case r.COLORTYPE_COLOR_ALPHA:case r.COLORTYPE_COLOR:8===n.bitDepth?(f[p]=t.red,f[p+1]=t.green,f[p+2]=t.blue,o&&(f[p+3]=t.alpha)):(f.writeUInt16BE(t.red,p),f.writeUInt16BE(t.green,p+2),f.writeUInt16BE(t.blue,p+4),o&&f.writeUInt16BE(t.alpha,p+6));break;case r.COLORTYPE_ALPHA:case r.COLORTYPE_GRAYSCALE:{let e=(t.red+t.green+t.blue)/3;8===n.bitDepth?(f[p]=e,o&&(f[p+1]=t.alpha)):(f.writeUInt16BE(e,p),o&&f.writeUInt16BE(t.alpha,p+2));break}default:throw new Error("unrecognised color Type "+n.colorType)}c+=h,p+=l}return f}},294(t,e,i){let r=i(43),n=i(596);e.process=function(t,e){let i=[],o=new r(t);return new n(e,{read:o.read.bind(o),write:function(t){i.push(t)},complete:function(){}}).start(),o.process(),Buffer.concat(i)}},369(t,e,i){var r,n=this&&this.__createBinding||(Object.create?function(t,e,i,r){void 0===r&&(r=i);var n=Object.getOwnPropertyDescriptor(e,i);n&&!("get"in n?!e.__esModule:n.writable||n.configurable)||(n={enumerable:!0,get:function(){return e[i]}}),Object.defineProperty(t,r,n)}:function(t,e,i,r){void 0===r&&(r=i),t[r]=e[i]}),o=this&&this.__setModuleDefault||(Object.create?function(t,e){Object.defineProperty(t,"default",{enumerable:!0,value:e})}:function(t,e){t.default=e}),s=this&&this.__importStar||(r=function(t){return r=Object.getOwnPropertyNames||function(t){var e=[];for(var i in t)Object.prototype.hasOwnProperty.call(t,i)&&(e[e.length]=i);return e},r(t)},function(t){if(t&&t.__esModule)return t;var e={};if(null!=t)for(var i=r(t),s=0;s<i.length;s++)"default"!==i[s]&&n(e,t,i[s]);return o(e,t),e});Object.defineProperty(e,"__esModule",{value:!0}),e.DrawmotiveEditorProvider=void 0;const a=s(i(398)),h=i(831);e.DrawmotiveEditorProvider=class{context;static viewType="drawmotive.editor";constructor(t){this.context=t}async resolveCustomTextEditor(t,e,i){e.webview.options={enableScripts:!0,localResourceRoots:[a.Uri.joinPath(this.context.extensionUri,"media")]},e.webview.html=await this.getHtmlForWebview(e.webview),e.webview.onDidReceiveMessage(async i=>{switch(i.type){case"ready":await this.updateWebview(t,e.webview);break;case"update":await this.updateDocument(t,i.data);break;case"error":a.window.showErrorMessage(`Drawmotive: ${i.error}`)}},null,this.context.subscriptions);const r=a.workspace.onDidChangeTextDocument(i=>{i.document.uri.toString()===t.uri.toString()&&this.updateWebview(t,e.webview)});e.onDidDispose(()=>{r.dispose()})}async updateWebview(t,e){try{const i=t.uri,r=await a.workspace.fs.readFile(i);let n="";if(r.length>0){const t=await(0,h.readPngMetadata)(Buffer.from(r));t&&(n=t)}e.postMessage({type:"init",data:{fileId:i.fsPath,diagramData:n,pngData:r.length>0?Buffer.from(r).toString("base64"):""}})}catch(t){console.error("Error updating webview:",t),e.postMessage({type:"error",error:`Failed to load diagram: ${t}`})}}async updateDocument(t,e){try{const{raw:i,png:r}=e;if(!i||!r)throw new Error("Missing required data fields (raw or png)");const n=Buffer.from(r,"base64"),o=await(0,h.writePngWithMetadata)(n,i),s=new a.WorkspaceEdit,l=new a.Range(t.positionAt(0),t.positionAt(t.getText().length)),f=o.toString("base64");if(s.replace(t.uri,l,f),!await a.workspace.applyEdit(s))throw new Error("Failed to apply edit to document");await t.save()}catch(t){console.error("Error updating document:",t),a.window.showErrorMessage(`Failed to save diagram: ${t}`)}}async getHtmlForWebview(t){const e=a.Uri.joinPath(this.context.extensionUri,"media","editor","index.html"),i=await a.workspace.fs.readFile(e);let r=Buffer.from(i).toString("utf8");const n=t.asWebviewUri(a.Uri.joinPath(this.context.extensionUri,"media","editor"));return r=r.replace(/href="([^"]+)"/g,(t,e)=>e.startsWith("http")?t:`href="${n}/${e}"`),r=r.replace(/src="([^"]+)"/g,(t,e)=>e.startsWith("http")?t:`src="${n}/${e}"`),r=r.replace("<head>",`<head>\n    <meta http-equiv="Content-Security-Policy" content="\n        default-src 'none';\n        script-src ${t.cspSource} 'unsafe-eval' 'unsafe-inline' 'wasm-unsafe-eval';\n        script-src-elem ${t.cspSource} 'unsafe-inline';\n        style-src ${t.cspSource} 'unsafe-inline';\n        img-src ${t.cspSource} data: blob:;\n        font-src ${t.cspSource};\n        connect-src ${t.cspSource} http://localhost data: blob:;\n        worker-src ${t.cspSource} blob:;\n        child-src ${t.cspSource} blob:;\n    ">`),r}}},395(t,e,i){let r=i(691),n=i(844),o=t.exports=function(t,e){this._options=t,t.checkCRC=!1!==t.checkCRC,this._hasIHDR=!1,this._hasIEND=!1,this._emittedHeadersFinished=!1,this._palette=[],this._colorType=0,this._chunks={},this._chunks[r.TYPE_IHDR]=this._handleIHDR.bind(this),this._chunks[r.TYPE_IEND]=this._handleIEND.bind(this),this._chunks[r.TYPE_IDAT]=this._handleIDAT.bind(this),this._chunks[r.TYPE_PLTE]=this._handlePLTE.bind(this),this._chunks[r.TYPE_tRNS]=this._handleTRNS.bind(this),this._chunks[r.TYPE_gAMA]=this._handleGAMA.bind(this),this.read=e.read,this.error=e.error,this.metadata=e.metadata,this.gamma=e.gamma,this.transColor=e.transColor,this.palette=e.palette,this.parsed=e.parsed,this.inflateData=e.inflateData,this.finished=e.finished,this.simpleTransparency=e.simpleTransparency,this.headersFinished=e.headersFinished||function(){}};o.prototype.start=function(){this.read(r.PNG_SIGNATURE.length,this._parseSignature.bind(this))},o.prototype._parseSignature=function(t){let e=r.PNG_SIGNATURE;for(let i=0;i<e.length;i++)if(t[i]!==e[i])return void this.error(new Error("Invalid file signature"));this.read(8,this._parseChunkBegin.bind(this))},o.prototype._parseChunkBegin=function(t){let e=t.readUInt32BE(0),i=t.readUInt32BE(4),o="";for(let e=4;e<8;e++)o+=String.fromCharCode(t[e]);let s=Boolean(32&t[4]);if(this._hasIHDR||i===r.TYPE_IHDR){if(this._crc=new n,this._crc.write(Buffer.from(o)),this._chunks[i])return this._chunks[i](e);s?this.read(e+4,this._skipChunk.bind(this)):this.error(new Error("Unsupported critical chunk type "+o))}else this.error(new Error("Expected IHDR on beggining"))},o.prototype._skipChunk=function(){this.read(8,this._parseChunkBegin.bind(this))},o.prototype._handleChunkEnd=function(){this.read(4,this._parseChunkEnd.bind(this))},o.prototype._parseChunkEnd=function(t){let e=t.readInt32BE(0),i=this._crc.crc32();this._options.checkCRC&&i!==e?this.error(new Error("Crc error - "+e+" - "+i)):this._hasIEND||this.read(8,this._parseChunkBegin.bind(this))},o.prototype._handleIHDR=function(t){this.read(t,this._parseIHDR.bind(this))},o.prototype._parseIHDR=function(t){this._crc.write(t);let e=t.readUInt32BE(0),i=t.readUInt32BE(4),n=t[8],o=t[9],s=t[10],a=t[11],h=t[12];if(8!==n&&4!==n&&2!==n&&1!==n&&16!==n)return void this.error(new Error("Unsupported bit depth "+n));if(!(o in r.COLORTYPE_TO_BPP_MAP))return void this.error(new Error("Unsupported color type"));if(0!==s)return void this.error(new Error("Unsupported compression method"));if(0!==a)return void this.error(new Error("Unsupported filter method"));if(0!==h&&1!==h)return void this.error(new Error("Unsupported interlace method"));this._colorType=o;let l=r.COLORTYPE_TO_BPP_MAP[this._colorType];this._hasIHDR=!0,this.metadata({width:e,height:i,depth:n,interlace:Boolean(h),palette:Boolean(o&r.COLORTYPE_PALETTE),color:Boolean(o&r.COLORTYPE_COLOR),alpha:Boolean(o&r.COLORTYPE_ALPHA),bpp:l,colorType:o}),this._handleChunkEnd()},o.prototype._handlePLTE=function(t){this.read(t,this._parsePLTE.bind(this))},o.prototype._parsePLTE=function(t){this._crc.write(t);let e=Math.floor(t.length/3);for(let i=0;i<e;i++)this._palette.push([t[3*i],t[3*i+1],t[3*i+2],255]);this.palette(this._palette),this._handleChunkEnd()},o.prototype._handleTRNS=function(t){this.simpleTransparency(),this.read(t,this._parseTRNS.bind(this))},o.prototype._parseTRNS=function(t){if(this._crc.write(t),this._colorType===r.COLORTYPE_PALETTE_COLOR){if(0===this._palette.length)return void this.error(new Error("Transparency chunk must be after palette"));if(t.length>this._palette.length)return void this.error(new Error("More transparent colors than palette size"));for(let e=0;e<t.length;e++)this._palette[e][3]=t[e];this.palette(this._palette)}this._colorType===r.COLORTYPE_GRAYSCALE&&this.transColor([t.readUInt16BE(0)]),this._colorType===r.COLORTYPE_COLOR&&this.transColor([t.readUInt16BE(0),t.readUInt16BE(2),t.readUInt16BE(4)]),this._handleChunkEnd()},o.prototype._handleGAMA=function(t){this.read(t,this._parseGAMA.bind(this))},o.prototype._parseGAMA=function(t){this._crc.write(t),this.gamma(t.readUInt32BE(0)/r.GAMMA_DIVISION),this._handleChunkEnd()},o.prototype._handleIDAT=function(t){this._emittedHeadersFinished||(this._emittedHeadersFinished=!0,this.headersFinished()),this.read(-t,this._parseIDAT.bind(this,t))},o.prototype._parseIDAT=function(t,e){if(this._crc.write(e),this._colorType===r.COLORTYPE_PALETTE_COLOR&&0===this._palette.length)throw new Error("Expected palette not found");this.inflateData(e);let i=t-e.length;i>0?this._handleIDAT(i):this._handleChunkEnd()},o.prototype._handleIEND=function(t){this.read(t,this._parseIEND.bind(this))},o.prototype._parseIEND=function(t){this._crc.write(t),this._hasIEND=!0,this._handleChunkEnd(),this.finished&&this.finished()}},398(t){t.exports=require("vscode")},477(t,e,i){let r=i(23),n=i(47),o=i(596),s=t.exports=function(t){n.call(this);let e=[],i=this;this._filter=new o(t,{read:this.read.bind(this),write:function(t){e.push(t)},complete:function(){i.emit("complete",Buffer.concat(e))}}),this._filter.start()};r.inherits(s,n)},518(t,e,i){let r=i(23),n=i(106),o=i(47),s=i(477),a=i(395),h=i(724),l=i(256),f=t.exports=function(t){o.call(this),this._parser=new a(t,{read:this.read.bind(this),error:this._handleError.bind(this),metadata:this._handleMetaData.bind(this),gamma:this.emit.bind(this,"gamma"),palette:this._handlePalette.bind(this),transColor:this._handleTransColor.bind(this),finished:this._finished.bind(this),inflateData:this._inflateData.bind(this),simpleTransparency:this._simpleTransparency.bind(this),headersFinished:this._headersFinished.bind(this)}),this._options=t,this.writable=!0,this._parser.start()};r.inherits(f,o),f.prototype._handleError=function(t){this.emit("error",t),this.writable=!1,this.destroy(),this._inflate&&this._inflate.destroy&&this._inflate.destroy(),this._filter&&(this._filter.destroy(),this._filter.on("error",function(){})),this.errord=!0},f.prototype._inflateData=function(t){if(!this._inflate)if(this._bitmapInfo.interlace)this._inflate=n.createInflate(),this._inflate.on("error",this.emit.bind(this,"error")),this._filter.on("complete",this._complete.bind(this)),this._inflate.pipe(this._filter);else{let t=(1+(this._bitmapInfo.width*this._bitmapInfo.bpp*this._bitmapInfo.depth+7>>3))*this._bitmapInfo.height,e=Math.max(t,n.Z_MIN_CHUNK);this._inflate=n.createInflate({chunkSize:e});let i=t,r=this.emit.bind(this,"error");this._inflate.on("error",function(t){i&&r(t)}),this._filter.on("complete",this._complete.bind(this));let o=this._filter.write.bind(this._filter);this._inflate.on("data",function(t){i&&(t.length>i&&(t=t.slice(0,i)),i-=t.length,o(t))}),this._inflate.on("end",this._filter.end.bind(this._filter))}this._inflate.write(t)},f.prototype._handleMetaData=function(t){this._metaData=t,this._bitmapInfo=Object.create(t),this._filter=new s(this._bitmapInfo)},f.prototype._handleTransColor=function(t){this._bitmapInfo.transColor=t},f.prototype._handlePalette=function(t){this._bitmapInfo.palette=t},f.prototype._simpleTransparency=function(){this._metaData.alpha=!0},f.prototype._headersFinished=function(){this.emit("metadata",this._metaData)},f.prototype._finished=function(){this.errord||(this._inflate?this._inflate.end():this.emit("error","No Inflate block"))},f.prototype._complete=function(t){if(this.errord)return;let e;try{let i=h.dataToBitMap(t,this._bitmapInfo);e=l(i,this._bitmapInfo,this._options.skipRescale),i=null}catch(t){return void this._handleError(t)}this.emit("parsed",e)}},596(t,e,i){let r=i(751),n=i(869);function o(t,e,i){let r=t*e;return 8!==i&&(r=Math.ceil(r/(8/i))),r}let s=t.exports=function(t,e){let i=t.width,n=t.height,s=t.interlace,a=t.bpp,h=t.depth;if(this.read=e.read,this.write=e.write,this.complete=e.complete,this._imageIndex=0,this._images=[],s){let t=r.getImagePasses(i,n);for(let e=0;e<t.length;e++)this._images.push({byteWidth:o(t[e].width,a,h),height:t[e].height,lineIndex:0})}else this._images.push({byteWidth:o(i,a,h),height:n,lineIndex:0});this._xComparison=8===h?a:16===h?2*a:1};s.prototype.start=function(){this.read(this._images[this._imageIndex].byteWidth+1,this._reverseFilterLine.bind(this))},s.prototype._unFilterType1=function(t,e,i){let r=this._xComparison,n=r-1;for(let o=0;o<i;o++){let i=t[1+o],s=o>n?e[o-r]:0;e[o]=i+s}},s.prototype._unFilterType2=function(t,e,i){let r=this._lastLine;for(let n=0;n<i;n++){let i=t[1+n],o=r?r[n]:0;e[n]=i+o}},s.prototype._unFilterType3=function(t,e,i){let r=this._xComparison,n=r-1,o=this._lastLine;for(let s=0;s<i;s++){let i=t[1+s],a=o?o[s]:0,h=s>n?e[s-r]:0,l=Math.floor((h+a)/2);e[s]=i+l}},s.prototype._unFilterType4=function(t,e,i){let r=this._xComparison,o=r-1,s=this._lastLine;for(let a=0;a<i;a++){let i=t[1+a],h=s?s[a]:0,l=a>o?e[a-r]:0,f=a>o&&s?s[a-r]:0,c=n(l,h,f);e[a]=i+c}},s.prototype._reverseFilterLine=function(t){let e,i=t[0],r=this._images[this._imageIndex],n=r.byteWidth;if(0===i)e=t.slice(1,n+1);else switch(e=Buffer.alloc(n),i){case 1:this._unFilterType1(t,e,n);break;case 2:this._unFilterType2(t,e,n);break;case 3:this._unFilterType3(t,e,n);break;case 4:this._unFilterType4(t,e,n);break;default:throw new Error("Unrecognised filter type - "+i)}this.write(e),r.lineIndex++,r.lineIndex>=r.height?(this._lastLine=null,this._imageIndex++,r=this._images[this._imageIndex]):this._lastLine=e,r?this.read(r.byteWidth+1,this._reverseFilterLine.bind(this)):(this._lastLine=null,this.complete())}},613(t){t.exports=require("assert")},625(t,e,i){let r=i(83),n=i(268);e.read=function(t,e){return r(t,e||{})},e.write=function(t,e){return n(t,e)}},691(t){t.exports={PNG_SIGNATURE:[137,80,78,71,13,10,26,10],TYPE_IHDR:1229472850,TYPE_IEND:1229278788,TYPE_IDAT:1229209940,TYPE_PLTE:1347179589,TYPE_tRNS:1951551059,TYPE_gAMA:1732332865,COLORTYPE_GRAYSCALE:0,COLORTYPE_PALETTE:1,COLORTYPE_COLOR:2,COLORTYPE_ALPHA:4,COLORTYPE_PALETTE_COLOR:3,COLORTYPE_COLOR_ALPHA:6,COLORTYPE_TO_BPP_MAP:{0:1,2:3,3:1,4:2,6:4},GAMMA_DIVISION:1e5}},724(t,e,i){let r=i(751),n=[function(){},function(t,e,i,r){if(r===e.length)throw new Error("Ran out of data");let n=e[r];t[i]=n,t[i+1]=n,t[i+2]=n,t[i+3]=255},function(t,e,i,r){if(r+1>=e.length)throw new Error("Ran out of data");let n=e[r];t[i]=n,t[i+1]=n,t[i+2]=n,t[i+3]=e[r+1]},function(t,e,i,r){if(r+2>=e.length)throw new Error("Ran out of data");t[i]=e[r],t[i+1]=e[r+1],t[i+2]=e[r+2],t[i+3]=255},function(t,e,i,r){if(r+3>=e.length)throw new Error("Ran out of data");t[i]=e[r],t[i+1]=e[r+1],t[i+2]=e[r+2],t[i+3]=e[r+3]}],o=[function(){},function(t,e,i,r){let n=e[0];t[i]=n,t[i+1]=n,t[i+2]=n,t[i+3]=r},function(t,e,i){let r=e[0];t[i]=r,t[i+1]=r,t[i+2]=r,t[i+3]=e[1]},function(t,e,i,r){t[i]=e[0],t[i+1]=e[1],t[i+2]=e[2],t[i+3]=r},function(t,e,i){t[i]=e[0],t[i+1]=e[1],t[i+2]=e[2],t[i+3]=e[3]}];function s(t,e,i,r,o,s){let a=t.width,h=t.height,l=t.index;for(let t=0;t<h;t++)for(let h=0;h<a;h++){let a=i(h,t,l);n[r](e,o,a,s),s+=r}return s}function a(t,e,i,r,n,s){let a=t.width,h=t.height,l=t.index;for(let t=0;t<h;t++){for(let h=0;h<a;h++){let a=n.get(r),f=i(h,t,l);o[r](e,a,f,s)}n.resetAfterLine()}}e.dataToBitMap=function(t,e){let i,n,o=e.width,h=e.height,l=e.depth,f=e.bpp,c=e.interlace;8!==l&&(i=function(t,e){let i=[],r=0;function n(){if(r===t.length)throw new Error("Ran out of data");let n,o,s,a,h,l,f,c,p=t[r];switch(r++,e){default:throw new Error("unrecognised depth");case 16:f=t[r],r++,i.push((p<<8)+f);break;case 4:f=15&p,c=p>>4,i.push(c,f);break;case 2:h=3&p,l=p>>2&3,f=p>>4&3,c=p>>6&3,i.push(c,f,l,h);break;case 1:n=1&p,o=p>>1&1,s=p>>2&1,a=p>>3&1,h=p>>4&1,l=p>>5&1,f=p>>6&1,c=p>>7&1,i.push(c,f,l,h,a,s,o,n)}}return{get:function(t){for(;i.length<t;)n();let e=i.slice(0,t);return i=i.slice(t),e},resetAfterLine:function(){i.length=0},end:function(){if(r!==t.length)throw new Error("extra data found")}}}(t,l)),n=l<=8?Buffer.alloc(o*h*4):new Uint16Array(o*h*4);let p,u,d=Math.pow(2,l)-1,_=0;if(c)p=r.getImagePasses(o,h),u=r.getInterlaceIterator(o,h);else{let t=0;u=function(){let e=t;return t+=4,e},p=[{width:o,height:h}]}for(let e=0;e<p.length;e++)8===l?_=s(p[e],n,u,f,t,_):a(p[e],n,u,f,i,d);if(8===l){if(_!==t.length)throw new Error("extra data found")}else i.end();return n}},751(t,e){let i=[{x:[0],y:[0]},{x:[4],y:[0]},{x:[0,4],y:[4]},{x:[2,6],y:[0,4]},{x:[0,2,4,6],y:[2,6]},{x:[1,3,5,7],y:[0,2,4,6]},{x:[0,1,2,3,4,5,6,7],y:[1,3,5,7]}];e.getImagePasses=function(t,e){let r=[],n=t%8,o=e%8,s=(t-n)/8,a=(e-o)/8;for(let t=0;t<i.length;t++){let e=i[t],h=s*e.x.length,l=a*e.y.length;for(let t=0;t<e.x.length&&e.x[t]<n;t++)h++;for(let t=0;t<e.y.length&&e.y[t]<o;t++)l++;h>0&&l>0&&r.push({width:h,height:l,index:t})}return r},e.getInterlaceIterator=function(t){return function(e,r,n){let o=e%i[n].x.length,s=(e-o)/i[n].x.length*8+i[n].x[o],a=r%i[n].y.length;return 4*s+((r-a)/i[n].y.length*8+i[n].y[a])*t*4}}},784(t,e,i){var r,n=this&&this.__createBinding||(Object.create?function(t,e,i,r){void 0===r&&(r=i);var n=Object.getOwnPropertyDescriptor(e,i);n&&!("get"in n?!e.__esModule:n.writable||n.configurable)||(n={enumerable:!0,get:function(){return e[i]}}),Object.defineProperty(t,r,n)}:function(t,e,i,r){void 0===r&&(r=i),t[r]=e[i]}),o=this&&this.__setModuleDefault||(Object.create?function(t,e){Object.defineProperty(t,"default",{enumerable:!0,value:e})}:function(t,e){t.default=e}),s=this&&this.__importStar||(r=function(t){return r=Object.getOwnPropertyNames||function(t){var e=[];for(var i in t)Object.prototype.hasOwnProperty.call(t,i)&&(e[e.length]=i);return e},r(t)},function(t){if(t&&t.__esModule)return t;var e={};if(null!=t)for(var i=r(t),s=0;s<i.length;s++)"default"!==i[s]&&n(e,t,i[s]);return o(e,t),e});Object.defineProperty(e,"__esModule",{value:!0}),e.activate=function(t){console.log("Drawmotive extension activated");const e=new h.DrawmotiveEditorProvider(t),i=a.window.registerCustomEditorProvider("drawmotive.editor",e,{webviewOptions:{retainContextWhenHidden:!0},supportsMultipleEditorsPerDocument:!1});t.subscriptions.push(i);const r=a.commands.registerCommand("drawmotive.newDrawing",async()=>{const t=await a.window.showSaveDialog({filters:{"Drawmotive Diagrams":["draw.png"]},saveLabel:"Create Drawing"});if(t){const e=(0,l.createEmptyPng)();await a.workspace.fs.writeFile(t,e),await a.commands.executeCommand("vscode.openWith",t,"drawmotive.editor")}});t.subscriptions.push(r)},e.deactivate=function(){console.log("Drawmotive extension deactivated")};const a=s(i(398)),h=i(369),l=i(831)},810(t,e,i){let r=i(869),n={0:function(t,e,i,r,n){for(let o=0;o<i;o++)r[n+o]=t[e+o]},1:function(t,e,i,r,n,o){for(let s=0;s<i;s++){let i=s>=o?t[e+s-o]:0,a=t[e+s]-i;r[n+s]=a}},2:function(t,e,i,r,n){for(let o=0;o<i;o++){let s=e>0?t[e+o-i]:0,a=t[e+o]-s;r[n+o]=a}},3:function(t,e,i,r,n,o){for(let s=0;s<i;s++){let a=s>=o?t[e+s-o]:0,h=e>0?t[e+s-i]:0,l=t[e+s]-(a+h>>1);r[n+s]=l}},4:function(t,e,i,n,o,s){for(let a=0;a<i;a++){let h=a>=s?t[e+a-s]:0,l=e>0?t[e+a-i]:0,f=e>0&&a>=s?t[e+a-(i+s)]:0,c=t[e+a]-r(h,l,f);n[o+a]=c}}},o={0:function(t,e,i){let r=0,n=e+i;for(let i=e;i<n;i++)r+=Math.abs(t[i]);return r},1:function(t,e,i,r){let n=0;for(let o=0;o<i;o++){let i=o>=r?t[e+o-r]:0,s=t[e+o]-i;n+=Math.abs(s)}return n},2:function(t,e,i){let r=0,n=e+i;for(let o=e;o<n;o++){let n=e>0?t[o-i]:0,s=t[o]-n;r+=Math.abs(s)}return r},3:function(t,e,i,r){let n=0;for(let o=0;o<i;o++){let s=o>=r?t[e+o-r]:0,a=e>0?t[e+o-i]:0,h=t[e+o]-(s+a>>1);n+=Math.abs(h)}return n},4:function(t,e,i,n){let o=0;for(let s=0;s<i;s++){let a=s>=n?t[e+s-n]:0,h=e>0?t[e+s-i]:0,l=e>0&&s>=n?t[e+s-(i+n)]:0,f=t[e+s]-r(a,h,l);o+=Math.abs(f)}return o}};t.exports=function(t,e,i,r,s){let a;if("filterType"in r&&-1!==r.filterType){if("number"!=typeof r.filterType)throw new Error("unrecognised filter types");a=[r.filterType]}else a=[0,1,2,3,4];16===r.bitDepth&&(s*=2);let h=e*s,l=0,f=0,c=Buffer.alloc((h+1)*i),p=a[0];for(let e=0;e<i;e++){if(a.length>1){let e=1/0;for(let i=0;i<a.length;i++){let r=o[a[i]](t,f,h,s);r<e&&(p=a[i],e=r)}}c[l]=p,l++,n[p](t,f,h,c,l,s),l+=h,f+=h}return c}},825(t,e,i){let r=i(613).ok,n=i(106),o=i(23),s=i(181).kMaxLength;function a(t){if(!(this instanceof a))return new a(t);t&&t.chunkSize<n.Z_MIN_CHUNK&&(t.chunkSize=n.Z_MIN_CHUNK),n.Inflate.call(this,t),this._offset=void 0===this._offset?this._outOffset:this._offset,this._buffer=this._buffer||this._outBuffer,t&&null!=t.maxLength&&(this._maxLength=t.maxLength)}function h(t,e){e&&process.nextTick(e),t._handle&&(t._handle.close(),t._handle=null)}function l(t,e){return function(t,e){if("string"==typeof e&&(e=Buffer.from(e)),!(e instanceof Buffer))throw new TypeError("Not a string or buffer");let i=t._finishFlushFlag;return null==i&&(i=n.Z_FINISH),t._processChunk(e,i)}(new a(e),t)}a.prototype._processChunk=function(t,e,i){if("function"==typeof i)return n.Inflate._processChunk.call(this,t,e,i);let o,a,l=this,f=t&&t.length,c=this._chunkSize-this._offset,p=this._maxLength,u=0,d=[],_=0;function w(t,e){if(l._hadError)return;let i=c-e;if(r(i>=0,"have should not go down"),i>0){let t=l._buffer.slice(l._offset,l._offset+i);if(l._offset+=i,t.length>p&&(t=t.slice(0,p)),d.push(t),_+=t.length,p-=t.length,0===p)return!1}return(0===e||l._offset>=l._chunkSize)&&(c=l._chunkSize,l._offset=0,l._buffer=Buffer.allocUnsafe(l._chunkSize)),0===e&&(u+=f-t,f=t,!0)}this.on("error",function(t){o=t}),r(this._handle,"zlib binding closed");do{a=this._handle.writeSync(e,t,u,f,this._buffer,this._offset,c),a=a||this._writeState}while(!this._hadError&&w(a[0],a[1]));if(this._hadError)throw o;if(_>=s)throw h(this),new RangeError("Cannot create final Buffer. It would be larger than 0x"+s.toString(16)+" bytes");let g=Buffer.concat(d,_);return h(this),g},o.inherits(a,n.Inflate),t.exports=e=l,e.Inflate=a,e.createInflate=function(t){return new a(t)},e.inflateSync=l},831(t,e,i){Object.defineProperty(e,"__esModule",{value:!0}),e.readPngMetadata=async function(t){try{if(0===t.length)return null;const e=r.PNG.sync.read(t);return e.text&&e.text[n]?e.text[n]:null}catch(t){return console.error("Error reading PNG metadata:",t),null}},e.writePngWithMetadata=async function(t,e){try{const i=r.PNG.sync.read(t);return i.text||(i.text={}),i.text[n]=e,r.PNG.sync.write(i,{colorType:i.colorType,inputColorType:i.colorType,bitDepth:i.bitDepth,inputHasAlpha:!0})}catch(t){throw console.error("Error writing PNG metadata:",t),new Error(`Failed to write PNG metadata: ${t}`)}},e.createEmptyPng=function(){const t=new r.PNG({width:800,height:600,colorType:6,bitDepth:8});for(let e=0;e<t.height;e++)for(let i=0;i<t.width;i++){const r=t.width*e+i<<2;t.data[r]=255,t.data[r+1]=255,t.data[r+2]=255,t.data[r+3]=255}return r.PNG.sync.write(t)};const r=i(73),n="drawmotive"},844(t){let e=[];!function(){for(let t=0;t<256;t++){let i=t;for(let t=0;t<8;t++)1&i?i=3988292384^i>>>1:i>>>=1;e[t]=i}}();let i=t.exports=function(){this._crc=-1};i.prototype.write=function(t){for(let i=0;i<t.length;i++)this._crc=e[255&(this._crc^t[i])]^this._crc>>>8;return!0},i.prototype.crc32=function(){return-1^this._crc},i.crc32=function(t){let i=-1;for(let r=0;r<t.length;r++)i=e[255&(i^t[r])]^i>>>8;return-1^i}},869(t){t.exports=function(t,e,i){let r=t+e-i,n=Math.abs(r-t),o=Math.abs(r-e),s=Math.abs(r-i);return n<=o&&n<=s?t:o<=s?e:i}}},e={},i=function i(r){var n=e[r];if(void 0!==n)return n.exports;var o=e[r]={exports:{}};return t[r].call(o.exports,o,o.exports,i),o.exports}(784);module.exports=i})();
+/******/ (() => { // webpackBootstrap
+/******/ 	"use strict";
+/******/ 	var __webpack_modules__ = ([
+/* 0 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.activate = activate;
+exports.deactivate = deactivate;
+const vscode = __importStar(__webpack_require__(1));
+const DrawmotiveEditorProvider_1 = __webpack_require__(2);
+const pngMetadata_1 = __webpack_require__(3);
+function activate(context) {
+    console.log('Drawmotive extension activated');
+    // Register the custom editor provider for .draw.png files
+    const provider = new DrawmotiveEditorProvider_1.DrawmotiveEditorProvider(context);
+    const registration = vscode.window.registerCustomEditorProvider('drawmotive.editor', provider, {
+        webviewOptions: {
+            retainContextWhenHidden: true
+        },
+        supportsMultipleEditorsPerDocument: false
+    });
+    context.subscriptions.push(registration);
+    // Register command to create new drawing
+    const newDrawingCommand = vscode.commands.registerCommand('drawmotive.newDrawing', async () => {
+        const uri = await vscode.window.showSaveDialog({
+            filters: {
+                'Drawmotive Diagrams': ['draw.png']
+            },
+            saveLabel: 'Create Drawing'
+        });
+        if (uri) {
+            // Create a valid empty PNG file (not 0 bytes)
+            const emptyPngData = (0, pngMetadata_1.createEmptyPng)();
+            await vscode.workspace.fs.writeFile(uri, emptyPngData);
+            // Open the newly created file in the editor
+            await vscode.commands.executeCommand('vscode.openWith', uri, 'drawmotive.editor');
+        }
+    });
+    context.subscriptions.push(newDrawingCommand);
+}
+function deactivate() {
+    console.log('Drawmotive extension deactivated');
+}
+
+
+/***/ }),
+/* 1 */
+/***/ ((module) => {
+
+module.exports = require("vscode");
+
+/***/ }),
+/* 2 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DrawmotiveEditorProvider = void 0;
+const vscode = __importStar(__webpack_require__(1));
+const pngMetadata_1 = __webpack_require__(3);
+/**
+ * Provider for Drawmotive custom editor that handles .draw.png files (binary PNG format)
+ */
+class DrawmotiveEditorProvider {
+    context;
+    static viewType = 'drawmotive.editor';
+    constructor(context) {
+        this.context = context;
+    }
+    async openCustomDocument(uri, openContext, _token) {
+        return { uri, dispose: () => { } };
+    }
+    async resolveCustomEditor(document, webviewPanel, _token) {
+        // Setup webview
+        webviewPanel.webview.options = {
+            enableScripts: true,
+            localResourceRoots: [
+                vscode.Uri.joinPath(this.context.extensionUri, 'media')
+            ]
+        };
+        webviewPanel.webview.html = await this.getHtmlForWebview(webviewPanel.webview);
+        // Handle messages from webview
+        webviewPanel.webview.onDidReceiveMessage(async (message) => {
+            switch (message.type) {
+                case 'ready':
+                    await this.updateWebview(document.uri, webviewPanel.webview);
+                    break;
+                case 'update':
+                    await this.updateDocument(document.uri, message.data);
+                    break;
+                case 'error':
+                    vscode.window.showErrorMessage(`Drawmotive: ${message.error}`);
+                    break;
+            }
+        }, null, this.context.subscriptions);
+        // Watch for external file changes
+        const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(document.uri, '*'));
+        watcher.onDidChange(async () => {
+            await this.updateWebview(document.uri, webviewPanel.webview);
+        });
+        webviewPanel.onDidDispose(() => {
+            watcher.dispose();
+        });
+    }
+    async updateWebview(fileUri, webview) {
+        try {
+            // Read file as binary PNG data
+            const fileData = await vscode.workspace.fs.readFile(fileUri);
+            console.log(`[DrawmotiveEditorProvider] Read file: ${fileData.length} bytes`);
+            let diagramData = '';
+            if (fileData.length > 0) {
+                const metadata = await (0, pngMetadata_1.readPngMetadata)(Buffer.from(fileData));
+                console.log(`[DrawmotiveEditorProvider] Extracted metadata: ${metadata ? metadata.substring(0, 100) + '...' : 'null'}`);
+                if (metadata) {
+                    diagramData = metadata;
+                }
+            }
+            console.log(`[DrawmotiveEditorProvider] Sending init message with diagramData length: ${diagramData.length}`);
+            webview.postMessage({
+                type: 'init',
+                data: {
+                    fileId: fileUri.fsPath,
+                    diagramData: diagramData,
+                    pngData: fileData.length > 0 ? Buffer.from(fileData).toString('base64') : ''
+                }
+            });
+        }
+        catch (error) {
+            console.error('Error updating webview:', error);
+            webview.postMessage({
+                type: 'error',
+                error: `Failed to load diagram: ${error}`
+            });
+        }
+    }
+    async updateDocument(fileUri, data) {
+        try {
+            console.log('[DrawmotiveEditorProvider] updateDocument called with data:', data);
+            const { raw, png } = data;
+            if (!raw || !png) {
+                console.error('[DrawmotiveEditorProvider] Missing data fields:', { hasRaw: !!raw, hasPng: !!png });
+                throw new Error('Missing required data fields (raw or png)');
+            }
+            console.log(`[DrawmotiveEditorProvider] Received raw data length: ${raw.length}, png data length: ${png.length}`);
+            const pngBuffer = Buffer.from(png, 'base64');
+            console.log(`[DrawmotiveEditorProvider] Decoded PNG buffer: ${pngBuffer.length} bytes`);
+            const finalPngBuffer = await (0, pngMetadata_1.writePngWithMetadata)(pngBuffer, raw);
+            console.log(`[DrawmotiveEditorProvider] Final PNG with metadata: ${finalPngBuffer.length} bytes`);
+            // Write binary PNG data directly to file
+            await vscode.workspace.fs.writeFile(fileUri, finalPngBuffer);
+            console.log('[DrawmotiveEditorProvider] File written successfully');
+        }
+        catch (error) {
+            console.error('Error updating document:', error);
+            vscode.window.showErrorMessage(`Failed to save diagram: ${error}`);
+        }
+    }
+    async getHtmlForWebview(webview) {
+        const indexPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'editor', 'index.html');
+        const indexBytes = await vscode.workspace.fs.readFile(indexPath);
+        let html = Buffer.from(indexBytes).toString('utf8');
+        const editorUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'editor'));
+        // Convert relative paths to absolute webview URIs
+        html = html.replace(/href="([^"]+)"/g, (match, path) => {
+            if (path.startsWith('http'))
+                return match;
+            return `href="${editorUri}/${path}"`;
+        });
+        html = html.replace(/src="([^"]+)"/g, (match, path) => {
+            if (path.startsWith('http'))
+                return match;
+            return `src="${editorUri}/${path}"`;
+        });
+        // Add CSP
+        html = html.replace('<head>', `<head>
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'none';
+        script-src ${webview.cspSource} 'unsafe-eval' 'unsafe-inline' 'wasm-unsafe-eval';
+        script-src-elem ${webview.cspSource} 'unsafe-inline';
+        style-src ${webview.cspSource} 'unsafe-inline';
+        img-src ${webview.cspSource} data: blob:;
+        font-src ${webview.cspSource};
+        connect-src ${webview.cspSource} http://localhost data: blob:;
+        worker-src ${webview.cspSource} blob:;
+        child-src ${webview.cspSource} blob:;
+    ">`);
+        return html;
+    }
+}
+exports.DrawmotiveEditorProvider = DrawmotiveEditorProvider;
+
+
+/***/ }),
+/* 3 */
+/***/ ((__unused_webpack_module, exports) => {
+
+
+/**
+ * Simple PNG metadata handler for Drawmotive VSCode extension
+ * Manually inserts/extracts tEXt chunks from PNG files
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.readPngMetadata = readPngMetadata;
+exports.writePngWithMetadata = writePngWithMetadata;
+exports.createEmptyPng = createEmptyPng;
+const METADATA_KEY = 'drawmotive';
+/**
+ * Reads Drawmotive metadata from a PNG file
+ */
+async function readPngMetadata(pngBuffer) {
+    try {
+        if (pngBuffer.length === 0) {
+            return null;
+        }
+        const metadata = readTextChunk(pngBuffer, METADATA_KEY);
+        if (metadata) {
+            console.log('[readPngMetadata] Found metadata with key:', METADATA_KEY, 'length:', metadata.length);
+            return metadata;
+        }
+        console.log('[readPngMetadata] No metadata found with key:', METADATA_KEY);
+        return null;
+    }
+    catch (error) {
+        console.error('[readPngMetadata] Error:', error);
+        return null;
+    }
+}
+/**
+ * Writes a PNG file with embedded Drawmotive metadata
+ */
+async function writePngWithMetadata(pngBuffer, metadata) {
+    try {
+        console.log('[writePngWithMetadata] Adding metadata, length:', metadata.length);
+        // Remove existing drawmotive chunk if present
+        const cleanedBuffer = removeTextChunk(pngBuffer, METADATA_KEY);
+        // Insert new tEXt chunk
+        const outputBuffer = insertTextChunk(cleanedBuffer, METADATA_KEY, metadata);
+        console.log('[writePngWithMetadata] Output buffer size:', outputBuffer.length);
+        // Verify
+        const verifyMetadata = readTextChunk(outputBuffer, METADATA_KEY);
+        console.log('[writePngWithMetadata] Verification:', !!verifyMetadata, 'length:', verifyMetadata?.length);
+        return outputBuffer;
+    }
+    catch (error) {
+        console.error('[writePngWithMetadata] Error:', error);
+        throw error;
+    }
+}
+/**
+ * Reads a tEXt chunk from PNG
+ */
+function readTextChunk(pngBuffer, keyword) {
+    const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+    if (!pngBuffer.subarray(0, 8).equals(PNG_SIGNATURE)) {
+        throw new Error('Invalid PNG signature');
+    }
+    let offset = 8;
+    while (offset + 12 <= pngBuffer.length) {
+        const length = pngBuffer.readUInt32BE(offset);
+        const type = pngBuffer.subarray(offset + 4, offset + 8).toString('ascii');
+        if (offset + 12 + length > pngBuffer.length)
+            break;
+        if (type === 'tEXt') {
+            const data = pngBuffer.subarray(offset + 8, offset + 8 + length);
+            const nullIndex = data.indexOf(0);
+            if (nullIndex > 0) {
+                const chunkKeyword = data.subarray(0, nullIndex).toString('latin1');
+                if (chunkKeyword === keyword) {
+                    return data.subarray(nullIndex + 1).toString('latin1');
+                }
+            }
+        }
+        if (type === 'IEND')
+            break;
+        offset += 12 + length;
+    }
+    return null;
+}
+/**
+ * Removes a tEXt chunk with specific keyword
+ */
+function removeTextChunk(pngBuffer, keyword) {
+    const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+    if (!pngBuffer.subarray(0, 8).equals(PNG_SIGNATURE)) {
+        throw new Error('Invalid PNG signature');
+    }
+    const chunks = [PNG_SIGNATURE];
+    let offset = 8;
+    while (offset + 12 <= pngBuffer.length) {
+        const length = pngBuffer.readUInt32BE(offset);
+        const type = pngBuffer.subarray(offset + 4, offset + 8).toString('ascii');
+        if (offset + 12 + length > pngBuffer.length)
+            break;
+        const chunkSize = 12 + length;
+        const chunk = pngBuffer.subarray(offset, offset + chunkSize);
+        // Skip tEXt chunks with our keyword
+        if (type === 'tEXt') {
+            const data = pngBuffer.subarray(offset + 8, offset + 8 + length);
+            const nullIndex = data.indexOf(0);
+            if (nullIndex > 0) {
+                const chunkKeyword = data.subarray(0, nullIndex).toString('latin1');
+                if (chunkKeyword === keyword) {
+                    offset += chunkSize;
+                    continue; // Skip this chunk
+                }
+            }
+        }
+        chunks.push(chunk);
+        offset += chunkSize;
+        if (type === 'IEND')
+            break;
+    }
+    return Buffer.concat(chunks);
+}
+/**
+ * Inserts a tEXt chunk before IEND
+ */
+function insertTextChunk(pngBuffer, keyword, text) {
+    const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+    if (!pngBuffer.subarray(0, 8).equals(PNG_SIGNATURE)) {
+        throw new Error('Invalid PNG signature');
+    }
+    // Find IEND position
+    let iendPos = -1;
+    let offset = 8;
+    while (offset + 8 <= pngBuffer.length) {
+        const length = pngBuffer.readUInt32BE(offset);
+        const type = pngBuffer.subarray(offset + 4, offset + 8).toString('ascii');
+        if (type === 'IEND') {
+            iendPos = offset;
+            break;
+        }
+        offset += 12 + length;
+    }
+    if (iendPos === -1) {
+        throw new Error('IEND chunk not found');
+    }
+    // Create tEXt chunk
+    const keywordBuf = Buffer.from(keyword, 'latin1');
+    const textBuf = Buffer.from(text, 'latin1');
+    const data = Buffer.concat([keywordBuf, Buffer.from([0]), textBuf]);
+    const lengthBuf = Buffer.alloc(4);
+    lengthBuf.writeUInt32BE(data.length, 0);
+    const typeBuf = Buffer.from('tEXt', 'ascii');
+    const crcBuf = Buffer.alloc(4);
+    crcBuf.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])), 0);
+    const textChunk = Buffer.concat([lengthBuf, typeBuf, data, crcBuf]);
+    // Combine: before IEND + tEXt chunk + IEND chunk
+    return Buffer.concat([
+        pngBuffer.subarray(0, iendPos),
+        textChunk,
+        pngBuffer.subarray(iendPos)
+    ]);
+}
+/**
+ * CRC32 calculation for PNG chunks
+ */
+function crc32(buffer) {
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < buffer.length; i++) {
+        crc = crc ^ buffer[i];
+        for (let j = 0; j < 8; j++) {
+            if (crc & 1) {
+                crc = (crc >>> 1) ^ 0xEDB88320;
+            }
+            else {
+                crc = crc >>> 1;
+            }
+        }
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+/**
+ * Creates an empty PNG (not used by VSCode extension, but keeping for compatibility)
+ */
+function createEmptyPng() {
+    // Minimal 1x1 white PNG
+    return Buffer.from([
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+        0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+        0x00, 0x00, 0x03, 0x20, 0x00, 0x00, 0x02, 0x58, // 800x600
+        0x08, 0x06, 0x00, 0x00, 0x00, 0xDB, 0x3F, 0x57,
+        0x9F, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, // IDAT chunk (minimal)
+        0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+        0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
+        0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, // IEND chunk
+        0x42, 0x60, 0x82
+    ]);
+}
+
+
+/***/ })
+/******/ 	]);
+/************************************************************************/
+/******/ 	// The module cache
+/******/ 	var __webpack_module_cache__ = {};
+/******/ 	
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/ 		// Check if module is in cache
+/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 		if (cachedModule !== undefined) {
+/******/ 			return cachedModule.exports;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = __webpack_module_cache__[moduleId] = {
+/******/ 			// no module.id needed
+/******/ 			// no module.loaded needed
+/******/ 			exports: {}
+/******/ 		};
+/******/ 	
+/******/ 		// Execute the module function
+/******/ 		__webpack_modules__[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+/******/ 	
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/ 	
+/************************************************************************/
+/******/ 	
+/******/ 	// startup
+/******/ 	// Load entry module and return exports
+/******/ 	// This entry module is referenced by other modules so it can't be inlined
+/******/ 	var __webpack_exports__ = __webpack_require__(0);
+/******/ 	module.exports = __webpack_exports__;
+/******/ 	
+/******/ })()
+;
+//# sourceMappingURL=extension.js.map

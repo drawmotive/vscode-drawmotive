@@ -2,16 +2,6 @@ name: Release Stable Version
 
 on:
   workflow_dispatch:
-    inputs:
-      version_bump:
-        description: 'Version bump type'
-        required: true
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
-        default: patch
 
 jobs:
   release:
@@ -45,16 +35,11 @@ jobs:
       - name: Build extension
         run: pnpm run package
 
-      - name: Bump version
+      - name: Get current version
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          pnpm run version:${{ inputs.version_bump }}
-          NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-          git add package.json
-          git commit -m "chore: release v$NEW_VERSION"
-          git tag "v$NEW_VERSION"
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Release version: $VERSION"
 
       - name: Package extension
         run: pnpm run vsce:package
@@ -64,21 +49,16 @@ jobs:
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
-      - name: Push changes and tags
-        run: |
-          git push origin main
-          git push origin "v$NEW_VERSION"
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ env.NEW_VERSION }}
-          name: v${{ env.NEW_VERSION }}
+          tag_name: v${{ env.VERSION }}
+          name: v${{ env.VERSION }}
           draft: false
           prerelease: false
           generate_release_notes: true
           body: |
-            ## 🚀 Stable Release v${{ env.NEW_VERSION }}
+            ## 🚀 Stable Release v${{ env.VERSION }}
 
             See [CHANGELOG.md](https://github.com/drawmotive/vscode-drawmotive/blob/main/CHANGELOG.md) for full details.
 
@@ -86,7 +66,7 @@ jobs:
             Install from VS Code Marketplace or download the `.vsix` file below.
 
             ```bash
-            code --install-extension vscode-drawmotive-${{ env.NEW_VERSION }}.vsix
+            code --install-extension vscode-drawmotive-${{ env.VERSION }}.vsix
             ```
           files: |
             *.vsix

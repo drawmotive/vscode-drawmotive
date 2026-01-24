@@ -2,7 +2,7 @@
   "name": "vscode-drawmotive",
   "displayName": "DrawMotive - Diagram & Flowchart Editor",
   "description": "Create technical diagrams, flowcharts, and visual documentation with embedded PNG files. Draw offline, version control friendly.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "drawmotive",
   "repository": {
     "type": "git",

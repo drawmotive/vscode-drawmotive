@@ -1,0 +1,94 @@
+name: Manual Pre-release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  prerelease:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run linting
+        run: pnpm run lint
+
+      - name: Build extension
+        run: pnpm run package
+
+      - name: Get current version
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Current version: $VERSION"
+
+      - name: Get commit info
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+
+      - name: Package extension
+        run: pnpm run vsce:package
+
+      - name: Publish pre-release to VS Code Marketplace
+        run: pnpm run vsce:publish-prerelease
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Create GitHub Pre-Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ env.VERSION }}-pre.${{ github.run_number }}
+          name: v${{ env.VERSION }}-pre.${{ github.run_number }} (Pre-release)
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+          body: |
+            ## 🚧 Pre-release v${{ env.VERSION }}-pre.${{ github.run_number }}
+
+            **This is a pre-release build from commit `${{ env.SHORT_SHA }}`**
+
+            ⚠️ Pre-releases are for testing purposes. Use stable releases for production.
+
+            ### What's Changed
+            See auto-generated release notes below.
+
+            ### Installation
+
+            **Option 1: Install from Marketplace (Pre-release channel)**
+            1. Open VS Code Extensions
+            2. Search for "DrawMotive"
+            3. Click "Switch to Pre-Release Version"
+
+            **Option 2: Install from VSIX**
+            ```bash
+            code --install-extension vscode-drawmotive-${{ env.VERSION }}.vsix
+            ```
+
+            ### Testing
+            Please report any issues at https://github.com/drawmotive/vscode-drawmotive/issues
+
+            ---
+            *Commit: ${{ github.sha }}*
+          files: |
+            *.vsix

@@ -6,10 +6,9 @@ on:
       - main
     paths-ignore:
       - '**.md'
-      - '.github/**'
-      - 'CHANGELOG.md'
-      - 'RELEASE.md'
       - 'LICENSE'
+      - '.vscode/**'
+      - 'docs/**'
 
 jobs:
   prerelease:

@@ -47,7 +47,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.check_version_bump.outputs.skip == 'false'
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run linting
         if: steps.check_version_bump.outputs.skip == 'false'

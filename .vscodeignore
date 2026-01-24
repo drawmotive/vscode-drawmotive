@@ -1,5 +1,6 @@
 .vscode/**
 .vscode-test/**
+.github/**
 test/**
 src/**
 out/**
@@ -20,3 +21,6 @@ webpack.config.js
 media/**/*.gz
 media/**/*.pdb
 media/**/*.symbols.json
+pnpm-lock.yaml
+FUTURE_WORK.md
+vscode-blazor-compatibility.md

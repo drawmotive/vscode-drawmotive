@@ -1,0 +1,138 @@
+name: Auto Pre-release
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.github/**'
+      - 'CHANGELOG.md'
+      - 'RELEASE.md'
+      - 'LICENSE'
+
+jobs:
+  prerelease:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if commit is version bump
+        id: check_version_bump
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          if [[ "$COMMIT_MSG" =~ ^chore:\ release\ v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "This is a release commit, skipping pre-release"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "Regular commit, proceeding with pre-release"
+          fi
+
+      - name: Setup Node.js
+        if: steps.check_version_bump.outputs.skip == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        if: steps.check_version_bump.outputs.skip == 'false'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Install dependencies
+        if: steps.check_version_bump.outputs.skip == 'false'
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linting
+        if: steps.check_version_bump.outputs.skip == 'false'
+        run: pnpm run lint
+
+      - name: Build extension
+        if: steps.check_version_bump.outputs.skip == 'false'
+        run: pnpm run package
+
+      - name: Get current version
+        if: steps.check_version_bump.outputs.skip == 'false'
+        id: get_version
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+
+      - name: Bump pre-release version
+        if: steps.check_version_bump.outputs.skip == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Get short commit SHA for pre-release identifier
+          SHORT_SHA=$(git rev-parse --short HEAD)
+
+          # Bump to pre-release version
+          pnpm run version:prerelease
+          NEW_VERSION=$(node -p "require('./package.json').version")
+
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+
+          # Don't commit the version change - pre-releases are ephemeral
+          git restore package.json
+
+      - name: Package extension
+        if: steps.check_version_bump.outputs.skip == 'false'
+        run: |
+          # Temporarily update version for packaging
+          npm version ${{ env.NEW_VERSION }} --no-git-tag-version
+          pnpm run vsce:package
+
+      - name: Publish pre-release to VS Code Marketplace
+        if: steps.check_version_bump.outputs.skip == 'false'
+        run: pnpm run vsce:publish-prerelease
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Create GitHub Pre-Release
+        if: steps.check_version_bump.outputs.skip == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ env.NEW_VERSION }}
+          name: v${{ env.NEW_VERSION }} (Pre-release)
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+          body: |
+            ## 🚧 Pre-release v${{ env.NEW_VERSION }}
+
+            **This is an automatic pre-release build from commit `${{ env.SHORT_SHA }}`**
+
+            ⚠️ Pre-releases are for testing purposes. Use stable releases for production.
+
+            ### What's Changed
+            See auto-generated release notes below.
+
+            ### Installation
+
+            **Option 1: Install from Marketplace (Pre-release channel)**
+            1. Open VS Code Extensions
+            2. Search for "DrawMotive"
+            3. Click "Switch to Pre-Release Version"
+
+            **Option 2: Install from VSIX**
+            ```bash
+            code --install-extension vscode-drawmotive-${{ env.NEW_VERSION }}.vsix
+            ```
+
+            ### Testing
+            Please report any issues at https://github.com/drawmotive/vscode-drawmotive/issues
+
+            ---
+            *Commit: ${{ github.sha }}*
+          files: |
+            *.vsix

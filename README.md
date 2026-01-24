@@ -1,65 +1,175 @@
-# vscode-drawmotive README
+# Drawmotive - Diagram & Flowchart Editor for VS Code
 
-This is the README for your extension "vscode-drawmotive". After writing up a brief description, we recommend including the following sections.
+Create professional technical diagrams, flowcharts, and architecture visualizations directly in VS Code. Your diagrams are stored as PNG images with embedded data - perfect for documentation, version control, and collaboration.
 
-## Features
+## ✨ Why Drawmotive?
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **🎨 Full-Featured Diagram Editor** - Create flowcharts, UML diagrams, architecture diagrams, and more
+- **📁 Smart PNG Format** - Diagrams stored as standard PNG images with embedded JSON metadata
+- **🔒 Offline First** - Works completely offline, no cloud required
+- **📦 Git Friendly** - Version control your diagrams alongside code
+- **🚀 Zero Setup** - No external tools, no accounts, just draw
+- **💼 Professional** - Powered by the same engine as Drawmotive web app
 
-For example if there is an image subfolder under your extension project workspace:
+## 🎯 Perfect For
 
-\!\[feature X\]\(images/feature-x.png\)
+- Software architecture diagrams
+- API flow documentation
+- Database schema designs
+- System design documentation
+- Technical flowcharts
+- UML diagrams
+- Network topology diagrams
+- Process workflows
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## 🚀 Quick Start
 
-## Requirements
+### Create Your First Diagram
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+1. Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
+2. Run `Drawmotive: New Diagram`
+3. Save as `diagram.draw.png`
+4. Start drawing!
 
-## Extension Settings
+### Edit Existing Diagrams
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+Simply click any `.draw.png` file in your workspace - it opens automatically in the Drawmotive editor.
 
-For example:
+## 💡 Features
 
-This extension contributes the following settings:
+### Smart File Format
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+Drawmotive uses a revolutionary file format that's both a **valid PNG image** and a **full diagram**:
 
-## Known Issues
+- **Share anywhere** - Works as a regular PNG in emails, Slack, GitHub, etc.
+- **Embedded data** - All diagram information stored invisibly in PNG metadata
+- **Single file** - No separate `.json` or data files to manage
+- **Version control** - Commit to Git like any other image
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+### Developer Workflow Integration
 
-## Release Notes
+```bash
+# Works seamlessly with Git
+git add docs/architecture.draw.png
+git commit -m "Update architecture diagram"
 
-Users appreciate release notes as you update your extension.
+# View in any image viewer
+open diagram.draw.png
 
-### 1.0.0
+# Edit in VS Code
+code diagram.draw.png
+```
 
-Initial release of ...
+### Example Use Cases
 
-### 1.0.1
+**Software Teams:**
+- Document microservices architecture
+- Explain API flows in pull requests
+- Design database schemas
+- Create onboarding documentation
 
-Fixed issue #.
+**Technical Writers:**
+- Illustrate complex concepts
+- Build visual tutorials
+- Create process documentation
 
-### 1.1.0
+**Architects & Engineers:**
+- System design documents
+- Infrastructure diagrams
+- Network topology maps
 
-Added features X, Y, and Z.
+## 📋 Requirements
+
+- **VS Code**: Version 1.95.0 or higher
+- **Operating System**: Windows, macOS, or Linux
+- **Internet**: Not required (works offline)
+
+## 🎓 How It Works
+
+1. **Create** - Use drawing tools to create your diagram
+2. **Save** - Exports as PNG with embedded diagram data in tEXt chunk
+3. **Share** - Share the PNG file anywhere - it's a valid image
+4. **Edit** - Open the PNG in Drawmotive to continue editing
+
+The magic? Your diagram data is stored in standard PNG metadata chunks, making files portable and future-proof.
+
+## 📸 File Format Details
+
+Drawmotive uses PNG tEXt chunks to store diagram metadata:
+
+- **Standard PNG format** - Opens in any image viewer
+- **Metadata key**: `drawmotive`
+- **Encoding**: JSON data embedded in tEXt chunk
+- **Compatibility**: 100% PNG spec compliant
+
+## 🤝 Integration
+
+Works great with:
+
+- **GitHub** - Preview images in README, show in PRs
+- **Confluence** - Use the [Confluence macro](https://marketplace.atlassian.com/apps/drawmotive) for deeper integration
+- **Slack/Teams** - Share as images in chat
+- **Documentation sites** - Embed as standard images
+- **Git** - Track changes, merge, and diff
+
+## 🐛 Known Issues
+
+No major known issues. Report problems at:
+https://github.com/drawmotive/vscode-drawmotive/issues
+
+## 📦 Installation
+
+### From VS Code Marketplace
+
+1. Open Extensions in VS Code (`Ctrl+Shift+X`)
+2. Search for "Drawmotive Diagram"
+3. Click Install
+
+### From VSIX File
+
+```bash
+code --install-extension vscode-drawmotive-x.x.x.vsix
+```
+
+## 🔗 Learn More
+
+- **Documentation**: https://docs.drawmotive.com
+- **Web App**: https://drawmotive.com
+- **GitHub**: https://github.com/drawmotive/vscode-drawmotive
+- **Issues**: https://github.com/drawmotive/vscode-drawmotive/issues
+
+## 📝 Release Notes
+
+### 0.1.0 - Initial Release
+
+🎉 First public release of Drawmotive for VS Code!
+
+**Features:**
+- ✅ Custom editor for `.draw.png` files
+- ✅ Full Blazor WebAssembly diagram editor
+- ✅ PNG metadata embedding and extraction
+- ✅ Command: "Drawmotive: New Diagram"
+- ✅ Offline-first architecture
+- ✅ Zero external dependencies
+
+**Supported Diagram Types:**
+- Flowcharts and process diagrams
+- Technical architecture diagrams
+- UML class diagrams
+- System design diagrams
+- Network topology
+- Custom drawings
+
+## 💬 Feedback & Support
+
+Love Drawmotive? Leave a review on the marketplace!
+
+Found a bug? Open an issue: https://github.com/drawmotive/vscode-drawmotive/issues
+
+Want a feature? Start a discussion: https://github.com/drawmotive/vscode-drawmotive/discussions
 
 ---
 
-## Working with Markdown
+**Start creating better technical documentation today! 🚀**
 
-You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Made with ❤️ by the Drawmotive team

@@ -12,6 +12,7 @@
     "url": "https://github.com/drawmotive/vscode-drawmotive/issues"
   },
   "homepage": "https://docs.drawmotive.com",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.95.0"
   },

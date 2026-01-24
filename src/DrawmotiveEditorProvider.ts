@@ -11,7 +11,7 @@ export class DrawmotiveEditorProvider implements vscode.CustomReadonlyEditorProv
 
     public async openCustomDocument(
         uri: vscode.Uri,
-        openContext: vscode.CustomDocumentOpenContext,
+        _openContext: vscode.CustomDocumentOpenContext,
         _token: vscode.CancellationToken
     ): Promise<vscode.CustomDocument> {
         return { uri, dispose: () => {} };

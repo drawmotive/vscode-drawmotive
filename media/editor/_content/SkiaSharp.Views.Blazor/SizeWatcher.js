@@ -44,4 +44,4 @@ export class SizeWatcher {
             instance.callback.invokeMethod('Invoke', element.clientWidth, element.clientHeight);
         }
     }
-}
+}

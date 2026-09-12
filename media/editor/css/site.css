@@ -65,8 +65,10 @@ i.rz-navigation-item-icon-children {
 }
 
 @font-face {
-  font-family: "Segoe UI Emoji";
-  src: url("../static/Segoe UI Emoji.ttf") format("truetype");
+  font-family: "NotoColorEmoji";
+  /* Firefox rejects the bitmap-only font as a webfont; use the upstream COLRv1 build. */
+  src: url("../static/Noto-COLRv1.ttf") format("truetype") tech(color-COLRv1),
+       url("../static/NotoColorEmoji.ttf") format("truetype");
   font-display: swap;
 }
 
@@ -158,7 +160,7 @@ html, body {
 }
 
 body {
-  font-family: "NotoSans-Regular", "Source Sans Pro", sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", Tahoma, Verdana;
+  font-family: "NotoSans-Regular", "NotoColorEmoji", "Source Sans Pro", sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Segoe UI Symbol", Tahoma, Verdana;
   color: var(--rz-text-color);
   font-size: var(--rz-body-font-size);
   line-height: var(--rz-body-line-height);

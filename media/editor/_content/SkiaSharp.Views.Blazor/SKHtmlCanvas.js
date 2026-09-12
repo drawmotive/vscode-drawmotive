@@ -180,4 +180,4 @@ export class SKHtmlCanvas {
         const GL = SKHtmlCanvas.getGL();
         return GL.currentContext && GL.currentContext.GLctx || GLctx;
     }
-}
+}

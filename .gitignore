@@ -2,3 +2,9 @@ node_modules
 .vscode-test/
 *.vsix
 .env
+
+# Tracked release policy; generated archives/receipts remain ignored.
+.release/*
+!.release/
+!.release/target.json
+!.release/check.cjs

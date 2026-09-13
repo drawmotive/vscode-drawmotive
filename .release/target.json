@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "releaseVersion": "0.2.0",
+  "channel": "stable",
+  "name": "vscode-drawmotive",
+  "version": "0.2.0",
+  "dependencies": {},
+  "native": false,
+  "publishable": false,
+  "excludedReason": "Marketplace already has 0.2.1; never downgrade to the 0.2.0 coordinated target. Enroll at a future version above 0.2.1."
+}

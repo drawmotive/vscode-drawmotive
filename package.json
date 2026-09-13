@@ -63,15 +63,12 @@
     "vscode:prepublish": "npm run package",
     "compile": "webpack",
     "watch": "webpack --watch",
-    "package": "webpack --mode production --devtool hidden-source-map",
+    "package": "node .release/check.cjs --ready && webpack --mode production --devtool hidden-source-map",
     "lint": "eslint src",
-    "vsce:package": "vsce package --no-dependencies",
-    "vsce:publish": "vsce publish --no-dependencies",
-    "vsce:publish-prerelease": "vsce publish --pre-release --no-dependencies",
-    "version:patch": "npm version patch --no-git-tag-version",
-    "version:minor": "npm version minor --no-git-tag-version",
-    "version:major": "npm version major --no-git-tag-version",
-    "version:prerelease": "npm version prerelease --preid=rc --no-git-tag-version"
+    "vsce:package": "node .release/check.cjs --ready && vsce package --no-dependencies",
+    "vsce:publish": "node .release/check.cjs --ready && vsce publish --no-dependencies",
+    "vsce:publish-prerelease": "node .release/check.cjs --ready && vsce publish --pre-release --no-dependencies",
+    "release:check": "node .release/check.cjs --ready"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

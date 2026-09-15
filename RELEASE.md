@@ -1,6 +1,6 @@
 # Release Process
 
-The active release authority is the superproject release.json and this checkout’s generated .release/target.json. All package/publish scripts check that target. The 0.2.0 coordinated batch defers this extension because Marketplace already contains 0.2.1; do not downgrade. Enroll in a later coordinated version. The historical workflow descriptions below do not authorize independent version bumps.
+The active release authority is the superproject release.json and this checkout’s generated .release/target.json. All package/publish scripts check that target. The 0.2.1 coordinated batch defers this extension because Marketplace already contains 0.2.1; do not overwrite the published version. Enroll in a coordinated version above 0.2.1. The historical workflow descriptions below do not authorize independent version bumps.
 
 This document describes how to publish the DrawMotive VS Code extension to the marketplace.
 

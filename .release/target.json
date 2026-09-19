@@ -4,7 +4,9 @@
   "channel": "stable",
   "name": "vscode-drawmotive",
   "version": "0.2.1",
-  "dependencies": {},
+  "dependencies": {
+    "@drawmotive/editor": "0.2.1"
+  },
   "native": false,
   "publishable": false,
   "excludedReason": "Marketplace already has 0.2.1; never overwrite the published version. Enroll at a future version above 0.2.1."

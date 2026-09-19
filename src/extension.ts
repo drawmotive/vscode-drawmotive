@@ -1,12 +1,15 @@
 import * as vscode from 'vscode';
 import { DrawmotiveEditorProvider } from './DrawmotiveEditorProvider';
 import { createEmptyPng } from './pngMetadata';
+import { EditorAssetServer } from './EditorAssetServer';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Drawmotive extension activated');
 
     // Register the custom editor provider for .draw.png files
-    const provider = new DrawmotiveEditorProvider(context);
+    const assetServer = new EditorAssetServer(vscode.Uri.joinPath(context.extensionUri, 'dist', 'editor').fsPath);
+    context.subscriptions.push(assetServer);
+    const provider = new DrawmotiveEditorProvider(context, assetServer);
     const registration = vscode.window.registerCustomEditorProvider(
         'drawmotive.editor',
         provider,

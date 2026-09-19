@@ -141,7 +141,7 @@ For emergency releases or testing, you can publish manually from your local mach
 
 ### Package Extension
 ```bash
-pnpm run vsce:package
+npm run vsce:package
 ```
 This creates a `.vsix` file.
 
@@ -151,21 +151,21 @@ This creates a `.vsix` file.
 $env:VSCE_PAT = "your-personal-access-token"
 
 # Publish stable release
-pnpm run vsce:publish
+npm run vsce:publish
 
 # Or publish pre-release
-pnpm run vsce:publish-prerelease
+npm run vsce:publish-prerelease
 ```
 
 ### Manual Version Bumping
 ```bash
 # For stable releases
-pnpm run version:patch   # 0.1.0 → 0.1.1
-pnpm run version:minor   # 0.1.0 → 0.2.0
-pnpm run version:major   # 0.1.0 → 1.0.0
+npm run version:patch   # 0.1.0 → 0.1.1
+npm run version:minor   # 0.1.0 → 0.2.0
+npm run version:major   # 0.1.0 → 1.0.0
 
 # For pre-releases
-pnpm run version:prerelease  # 0.1.0 → 0.1.0-rc.0 or 0.1.0-rc.0 → 0.1.0-rc.1
+npm run version:prerelease  # 0.1.0 → 0.1.0-rc.0 or 0.1.0-rc.0 → 0.1.0-rc.1
 ```
 
 ## Example Workflow
@@ -258,7 +258,7 @@ pnpm run version:prerelease  # 0.1.0 → 0.1.0-rc.0 or 0.1.0-rc.0 → 0.1.0-rc.1
 ### Build Fails
 
 **Check**:
-- Run locally: `pnpm run lint` and `pnpm run package`
+- Run locally: `npm run lint` and `npm run package`
 - Check error logs in Actions tab
 
 **Solution**:
@@ -299,16 +299,16 @@ pnpm run version:prerelease  # 0.1.0 → 0.1.0-rc.0 or 0.1.0-rc.0 → 0.1.0-rc.1
 
 ```bash
 # Package locally
-pnpm run vsce:package
+npm run vsce:package
 
 # Publish stable (manual)
-pnpm run vsce:publish
+npm run vsce:publish
 
 # Publish pre-release (manual)
-pnpm run vsce:publish-prerelease
+npm run vsce:publish-prerelease
 
 # Version bump
-pnpm run version:patch|minor|major|prerelease
+npm run version:patch|minor|major|prerelease
 ```
 
 ### Workflows

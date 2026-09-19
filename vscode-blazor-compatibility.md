@@ -1,3 +1,7 @@
+> Historical investigation: superseded by the published npm editor integration.
+> The extension now serves unmodified SDK assets on loopback and bridges its HTTP
+> frame to the VS Code webview. No Blazor runtime patches are applied.
+
 # VS Code + Blazor WebAssembly Compatibility Issues
 
 ## The Core Problem

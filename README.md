@@ -5,7 +5,7 @@ Create professional technical diagrams, flowcharts, and architecture visualizati
 ## ✨ Why Drawmotive?
 
 - **🎨 Full-Featured Diagram Editor** - Create flowcharts, UML diagrams, architecture diagrams, and more
-- **📁 Smart PNG Format** - Diagrams stored as standard PNG images with embedded JSON metadata
+- **📁 Smart PNG Format** - Diagrams stored as standard PNG images with embedded editable document
 - **🔒 Offline First** - Works completely offline, no cloud required
 - **📦 Git Friendly** - Version control your diagrams alongside code
 - **🚀 Zero Setup** - No external tools, no accounts, just draw
@@ -29,7 +29,7 @@ Create professional technical diagrams, flowcharts, and architecture visualizati
 1. Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
 2. Run `Drawmotive: New Diagram`
 3. Save as `diagram.draw.png`
-4. Start drawing!
+4. Start drawing, then click **Save diagram** above the canvas.
 
 ### Edit Existing Diagrams
 
@@ -87,7 +87,7 @@ code diagram.draw.png
 ## 🎓 How It Works
 
 1. **Create** - Use drawing tools to create your diagram
-2. **Save** - Exports as PNG with embedded diagram data in tEXt chunk
+2. **Save** - Click **Save diagram** to export as PNG with embedded diagram data in tEXt chunk
 3. **Share** - Share the PNG file anywhere - it's a valid image
 4. **Edit** - Open the PNG in Drawmotive to continue editing
 
@@ -99,7 +99,7 @@ Drawmotive uses PNG tEXt chunks to store diagram metadata:
 
 - **Standard PNG format** - Opens in any image viewer
 - **Metadata key**: `drawmotive`
-- **Encoding**: JSON data embedded in tEXt chunk
+- **Encoding**: Opaque base64 editor document embedded in a tEXt chunk
 - **Compatibility**: 100% PNG spec compliant
 
 ## 🤝 Integration
@@ -173,3 +173,30 @@ Want a feature? Start a discussion: https://github.com/drawmotive/vscode-drawmot
 **Start creating better technical documentation today! 🚀**
 
 Made with ❤️ by the Drawmotive team
+
+## Development
+
+Requires Node.js 22 or newer. Install the published editor and build the extension:
+
+```bash
+npm ci
+npm run compile
+npm test
+npm run lint
+npx playwright install chromium
+npm run test:browser
+```
+
+The exact `@drawmotive/editor` version and npm registry integrity are locked in
+`package-lock.json`. Each compile verifies and stages the package runtime under
+ignored `dist/editor/`; the VSIX includes those assets for offline editing. No
+.NET build or private editor checkout is required. Upgrade the dependency and
+lockfile together, then compile again.
+
+Press F5 to launch the extension. Use **Save diagram** above the editor to write
+the PNG preview and editable document back to the `.draw.png` file. The extension
+serves packaged assets on a temporary loopback port because the browser SDK
+requires HTTP origins; VS Code resolves the client URL for remote extension hosts. Desktop VS Code and remote tunnels still require manual verification.
+
+Release scripts still enforce `.release/target.json`; the already-published
+0.2.1 Marketplace version remains deferred until a future release is enrolled.

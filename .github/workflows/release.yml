@@ -19,21 +19,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 8
+          node-version: '22'
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: npm ci
 
       - name: Run linting
-        run: pnpm run lint
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm test
 
       - name: Build extension
-        run: pnpm run package
+        run: npm run package
 
       - name: Get current version
         run: |
@@ -42,10 +40,10 @@ jobs:
           echo "Release version: $VERSION"
 
       - name: Package extension
-        run: pnpm run vsce:package
+        run: npm run vsce:package
 
       - name: Publish to VS Code Marketplace
-        run: pnpm run vsce:publish
+        run: npm run vsce:publish
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
 

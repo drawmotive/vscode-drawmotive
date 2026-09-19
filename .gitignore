@@ -8,3 +8,8 @@ node_modules
 !.release/
 !.release/target.json
 !.release/check.cjs
+
+# Build outputs come from the locked npm editor package, never private binaries.
+media/
+dist/
+out/

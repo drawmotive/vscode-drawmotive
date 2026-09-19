@@ -18,9 +18,13 @@ vsc-extension-quickstart.md
 **/eslint.config.mjs
 **/.vscode-test.*
 webpack.config.js
-media/**/*.gz
-media/**/*.pdb
-media/**/*.symbols.json
-pnpm-lock.yaml
+media/**
 FUTURE_WORK.md
 vscode-blazor-compatibility.md
+package-lock.json
+scripts/**
+webview/**
+.release/**
+RELEASE.md
+
+.claude/**

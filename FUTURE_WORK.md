@@ -103,7 +103,7 @@
    - Source: `C:\src\dm\confluence-macro\static\editor\build` (pre-built)
    - Excludes: `.br`, `.gz`, `.map`, `.pdb`, `*.symbols.json`, `service-worker.js`
    - Result: 213 files, 81.08 MB
-2. **Compile extension**: `pnpm run compile`
+2. **Compile extension**: `npm run compile`
 3. **Package**: `vsce package`
 
 ### Build Script (copy-editor.ps1)
@@ -116,7 +116,7 @@ The PowerShell script automatically:
 
 ### Dependencies
 - Node.js 16+ (for extension)
-- pnpm (package manager)
+- npm (included with Node.js)
 - VSCode Extension Manager (vsce) for packaging
 - **Note**: Blazor editor uses pre-built version from confluence-macro, no .NET SDK needed for copying
 

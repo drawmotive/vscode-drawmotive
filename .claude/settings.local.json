@@ -6,9 +6,8 @@
       "Bash(npm install:*)",
       "Bash(dotnet publish:*)",
       "Bash(powershell.exe -ExecutionPolicy Bypass -File \"C:\\\\src\\\\vscode-drawmotive\\\\copy-editor.ps1\")",
-      "Bash(pnpm install:*)",
-      "Bash(pnpm run compile:*)",
-      "Bash(pnpm add:*)",
+      "Bash(npm ci:*)",
+      "Bash(npm run compile:*)",
       "Bash(find:*)"
     ],
     "additionalDirectories": [

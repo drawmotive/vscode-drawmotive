@@ -92,6 +92,6 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
-    "@drawmotive/editor": "0.2.2-alpha.1"
+    "@drawmotive/editor": "0.2.2-alpha.2"
   }
 }

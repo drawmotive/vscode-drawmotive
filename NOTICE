@@ -1,0 +1,18 @@
+DrawMotive VS Code Editor redistribution notices
+
+The extension code uses the MIT license in LICENSE. Its VSIX bundles the
+exact public @drawmotive/editor package locked in package-lock.json.
+
+The build copies the Editor license and its licenses/ directory into
+dist/editor/, together with the runtime's static/ and fonts/ notices. Preserve
+them in the VSIX and any redistributed runtime. They include .NET third-party
+notices, SkiaSharp, HarfBuzzSharp, Radzen and RBush license files, SIL Open
+Font License 1.1 text-font notices, and Apache License 2.0 Material Symbols
+license and notice files.
+
+VS Code tooling and other dependencies retain their own licenses. The
+extension MIT license does not replace dependency terms or grant rights to
+the private source used to produce the compiled Editor runtime.
+
+This file is an index of existing license obligations, not a replacement
+license or a grant of rights to third-party names or trademarks.

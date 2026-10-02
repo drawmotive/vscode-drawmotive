@@ -5,7 +5,7 @@ Report bugs and proposals in the
 the extension/VS Code version, OS, expected behavior and a small diagram or
 reproduction sequence.
 
-Contributor builds support Node.js 22 or 24 and npm 10 or 11 on Linux, Windows
+Contributor builds support Node.js 22 and its bundled npm on Linux, Windows
 and macOS. Installed users use VS Code's own host and webview. See the
 [support matrix](README.md) for browser and host verification limits.
 

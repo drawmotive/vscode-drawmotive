@@ -86,7 +86,7 @@ code diagram.draw.png
 
 | Layer | Supported environment | Verification boundary |
 | --- | --- | --- |
-| Contributor build and VSIX packaging | Node.js 22 or 24; npm 10 or 11 on Linux, Windows and macOS | CI targets all three systems with both Node lines |
+| Contributor build and VSIX packaging | Node.js 22; npm 10 on Linux, Windows and macOS | CI targets all three systems with Node 22 |
 | Installed editor | VS Code 1.95+ desktop on Linux, Windows or macOS | VS Code supplies the Extension Host and Chromium webview; a separate Node/npm install is not required |
 | Browser integration tests | Chromium harness using the packaged editor | This does not certify real VS Code hosts, remote tunnels, Firefox or WebKit |
 | Delivery | VSIX with the locked public editor runtime | This repository is not an npm product |
@@ -188,7 +188,7 @@ Made with ❤️ by the Drawmotive team
 
 ## Development
 
-Supports Node.js 22 and 24 with npm 10 or 11. Install the published editor and build the extension:
+Supports Node.js 22 with npm 10. Install the published editor and build the extension:
 
 ```bash
 npm ci

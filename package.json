@@ -64,15 +64,16 @@
     "vscode:prepublish": "npm run package",
     "compile": "npm run assets:prepare && webpack",
     "watch": "npm run assets:prepare && webpack --watch",
-    "package": "node .release/check.cjs --installed && npm run compile -- --mode production --devtool hidden-source-map",
+    "package": "npm run build",
     "lint": "eslint src",
-    "vsce:package": "node .release/check.cjs --ready && vsce package --no-dependencies",
+    "vsce:package": "node .release/check.cjs --build && vsce package --no-dependencies",
     "vsce:publish": "node .release/check.cjs --ready && vsce publish --no-dependencies",
     "vsce:publish-prerelease": "node .release/check.cjs --ready && vsce publish --pre-release --no-dependencies",
     "release:check": "node .release/check.cjs --ready",
     "assets:prepare": "node scripts/prepare-editor.cjs",
     "test": "tsc && node --test --test-concurrency=1 test/*.test.cjs",
-    "test:browser": "npm run compile && tsc && node --test --test-concurrency=1 test/*.browser.cjs"
+    "test:browser": "npm run compile && tsc && node --test --test-concurrency=1 test/*.browser.cjs",
+    "build": "node .release/check.cjs --build && npm run compile -- --mode production"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

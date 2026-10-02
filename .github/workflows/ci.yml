@@ -1,0 +1,27 @@
+name: VS Code Editor contracts
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: ["22", "24"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npm run vsce:package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: drawmotive-vsix-${{ matrix.os }}-node-${{ matrix.node }}
+          path: "*.vsix"
+          if-no-files-found: error

@@ -84,6 +84,18 @@ code diagram.draw.png
 - **Operating System**: Windows, macOS, or Linux
 - **Internet**: Not required (works offline)
 
+| Layer | Supported environment | Verification boundary |
+| --- | --- | --- |
+| Contributor build and VSIX packaging | Node.js 22 or 24; npm 10 or 11 on Linux, Windows and macOS | CI targets all three systems with both Node lines |
+| Installed editor | VS Code 1.95+ desktop on Linux, Windows or macOS | VS Code supplies the Extension Host and Chromium webview; a separate Node/npm install is not required |
+| Browser integration tests | Chromium harness using the packaged editor | This does not certify real VS Code hosts, remote tunnels, Firefox or WebKit |
+| Delivery | VSIX with the locked public editor runtime | This repository is not an npm product |
+
+The 2026-10-01 standalone audit ran Linux Node 22.23.2/npm 10.9.8 unit tests
+and compilation. Windows/macOS, actual VS Code Extension Hosts and remote
+tunnels still require verification. The embedded editor's verified browser
+boundary is Chromium; browser-only VS Code hosts are not currently verified.
+
 ## 🎓 How It Works
 
 1. **Create** - Use drawing tools to create your diagram
@@ -176,13 +188,14 @@ Made with ❤️ by the Drawmotive team
 
 ## Development
 
-Requires Node.js 22 or newer. Install the published editor and build the extension:
+Supports Node.js 22 and 24 with npm 10 or 11. Install the published editor and build the extension:
 
 ```bash
 npm ci
-npm run compile
 npm test
+npm run build
 npm run lint
+npm run vsce:package
 npx playwright install chromium
 npm run test:browser
 ```
@@ -200,3 +213,9 @@ requires HTTP origins; VS Code resolves the client URL for remote extension host
 
 Release scripts still enforce `.release/target.json`; the already-published
 0.2.1 Marketplace version remains deferred until a future release is enrolled.
+
+The local VSIX command above packages without publishing. `release:check`
+and publish scripts retain eligibility checks. See
+[Contributing](CONTRIBUTING.md) and [NOTICE](NOTICE) for the public build and
+redistribution requirements.
+Vulnerability reports follow [Security reporting](SECURITY.md).

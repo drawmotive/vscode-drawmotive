@@ -42,6 +42,12 @@ for intentional dependency changes and commit the matching lock. Preserve
 runtime hashes and provenance; do not substitute local editor assets or
 developer paths to bypass checks.
 
+Keep `@types/node` on the supported Node 22 line and pin `@types/vscode` to the
+minimum supported VS Code 1.95 API. TypeScript stays on 6.0 until the ESLint
+parser supports 7; its current peer range ends below 6.1. The obsolete Yeoman
+Mocha sample and Extension Test Runner dependencies are removed; meaningful
+checks use the Node and Chromium suites above, with F5 for manual host checks.
+
 Keep pull requests focused, include a regression for behavior fixes and report
 the checks actually run. Review links and commands for documentation changes.
 Preserve [LICENSE](LICENSE) and the bundled Editor, runtime and font terms

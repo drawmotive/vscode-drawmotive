@@ -27,12 +27,10 @@
 
 ## Run tests
 
-* Install the [Extension Test Runner](https://marketplace.visualstudio.com/items?itemName=ms-vscode.extension-test-runner)
-* Open the Testing view from the activity bar and click the Run Test" button, or use the hotkey `Ctrl/Cmd + ; A`
-* See the output of the test result in the Test Results view.
-* Make changes to `test/extension.test.js` or create new test files inside the `test` folder.
-  * The provided test runner will only consider files matching the name pattern `**.test.js`.
-  * You can create folders inside the `test` folder to structure your tests any way you want.
+* Run `npm test` for the serial Node contract tests and TypeScript compilation.
+* Run `npm run test:browser` for the Chromium editor integration tests.
+* Press `F5` for manual verification in a real VS Code host: create/open a `.draw.png`, save it and reopen it.
+* See [CONTRIBUTING.md](CONTRIBUTING.md) for the verification boundaries.
 
 ## Go further
 

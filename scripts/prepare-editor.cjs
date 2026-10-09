@@ -13,7 +13,9 @@ async function prepareEditor() {
     if (manifest.version !== expected) throw new Error(`Install @drawmotive/editor@${expected} with npm ci`);
     const { copyAssets } = await import(pathToFileURL(path.join(packageRoot, 'scripts/copy-assets.mjs')).href);
     const destination = path.join(root, 'dist/editor');
-    await rm(destination, { recursive: true, force: true });
+    // Browser checks create development bundles before release packaging.
+    // Remove the entire prior build so production cannot retain debug maps.
+    await rm(path.join(root, 'dist'), { recursive: true, force: true });
     await mkdir(destination, { recursive: true });
     await copyAssets(destination);
     await copyFile(entry, path.join(destination, 'sdk.js'));

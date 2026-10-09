@@ -1,6 +1,6 @@
 const path = require('path');
 
-module.exports = {
+module.exports = (_environment, options = {}) => ({
   target: 'node',
   mode: 'none',
   entry: './src/extension.ts',
@@ -28,8 +28,8 @@ module.exports = {
       }
     ]
   },
-  devtool: 'nosources-source-map',
+  devtool: options.mode === 'production' ? false : 'nosources-source-map',
   infrastructureLogging: {
     level: 'log'
   }
-};
+});

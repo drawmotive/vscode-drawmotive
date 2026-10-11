@@ -72,6 +72,8 @@ test('stable publication checks release inputs and calls only the stable vsce co
     await mkdir(path.dirname(cli), { recursive: true }); await writeFile(cli, '');
     const calls = [];
     assert.equal(publishStable(f.root, { run: (command, args, options) => { calls.push({ command, args, options }); return { status: 0 }; } }), 0);
+    assert.equal(calls.length, 1);
+    calls[0].args[0] = await realpath(calls[0].args[0]);
     assert.deepEqual(calls, [{ command: process.execPath, args: [await realpath(cli), 'publish', '--no-dependencies'], options: { cwd: f.root, stdio: 'inherit' } }]);
     assert.equal(publishStable(f.root, { run: () => ({ status: 2 }) }), 2);
 });

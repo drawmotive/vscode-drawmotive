@@ -29,7 +29,7 @@ Create professional technical diagrams, flowcharts, and architecture visualizati
 1. Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
 2. Run `Drawmotive: New Diagram`
 3. Save as `diagram.draw.png`
-4. Start drawing, then click **Save diagram** above the canvas.
+4. Start drawing, then click **Save diagram** in the editor toolbar.
 
 ### Edit Existing Diagrams
 
@@ -206,10 +206,16 @@ ignored `dist/editor/`; the VSIX includes those assets for offline editing. No
 .NET build or private editor checkout is required. Upgrade the dependency and
 lockfile together, then compile again.
 
-Press F5 to launch the extension. Use **Save diagram** above the editor to write
+Press F5 to launch the extension. Use **Save diagram** in the editor toolbar to write
 the PNG preview and editable document back to the `.draw.png` file. The extension
-serves packaged assets on a temporary loopback port because the browser SDK
-requires HTTP origins; VS Code resolves the client URL for remote extension hosts. Desktop VS Code and remote tunnels still require manual verification.
+loads the public SDK directly from webview assets and serves its packaged WASM
+runtime on a temporary loopback port; VS Code resolves the runtime URL for remote
+extension hosts. PNG encoding and embedded document validation belong to that
+runtime. A successful file write confirms only the exported revision, so edits
+made during saving remain unsaved. External file changes request reload approval
+when the editor has unsaved changes. New drawings are exported by a temporary
+runtime before their file is created. Desktop VS Code and remote tunnels still
+require manual verification.
 
 Release scripts still enforce `.release/target.json`; the already-published
 0.2.1 Marketplace version remains deferred until a future release is enrolled.

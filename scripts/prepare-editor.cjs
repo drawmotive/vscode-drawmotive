@@ -18,11 +18,13 @@ async function prepareEditor() {
     await rm(path.join(root, 'dist'), { recursive: true, force: true });
     await mkdir(destination, { recursive: true });
     await copyAssets(destination);
-    await copyFile(entry, path.join(destination, 'sdk.js'));
+    const webview = path.join(root, 'dist/webview');
+    await mkdir(webview, { recursive: true });
+    await copyFile(entry, path.join(webview, 'sdk.js'));
     await copyFile(path.join(packageRoot, 'LICENSE'), path.join(destination, 'LICENSE'));
     await cp(path.join(packageRoot, 'licenses'), path.join(destination, 'licenses'), { recursive: true });
-    for (const file of ['host.html', 'host.js']) {
-        await copyFile(path.join(root, 'webview', file), path.join(destination, file));
+    for (const file of ['editor.js', 'editor-session.mjs']) {
+        await copyFile(path.join(root, 'webview', file), path.join(webview, file));
     }
     console.log(`Prepared @drawmotive/editor@${manifest.version}`);
 }

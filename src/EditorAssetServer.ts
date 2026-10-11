@@ -10,7 +10,7 @@ const contentTypes: Record<string, string> = {
 };
 
 /** The public editor requires an HTTP(S) frame for Blazor navigation and its
- * origin-checked API. Serve packaged assets on loopback instead of rewriting
+ * runtime. Serve packaged assets on loopback instead of rewriting
  * the published runtime for vscode-webview: URLs. No workspace files are served. */
 export class EditorAssetServer {
     private readonly token = randomBytes(24).toString('hex');
@@ -68,7 +68,7 @@ export class EditorAssetServer {
         });
         const address = server.address();
         if (!address || typeof address === 'string') throw new Error('Editor asset server did not start');
-        return { url: `http://127.0.0.1:${address.port}/${this.token}/host.html`, port: address.port };
+        return { url: `http://127.0.0.1:${address.port}/${this.token}/`, port: address.port };
     }
 
     public dispose(): void {

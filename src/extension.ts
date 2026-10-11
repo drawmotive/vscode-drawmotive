@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { DrawmotiveEditorProvider } from './DrawmotiveEditorProvider';
-import { createEmptyPng } from './pngMetadata';
 import { EditorAssetServer } from './EditorAssetServer';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -32,12 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
         });
 
         if (uri) {
-            // Create a valid empty PNG file (not 0 bytes)
-            const emptyPngData = createEmptyPng();
-            await vscode.workspace.fs.writeFile(uri, emptyPngData);
-
-            // Open the newly created file in the editor
-            await vscode.commands.executeCommand('vscode.openWith', uri, 'drawmotive.editor');
+            await provider.createDrawing(uri);
         }
     });
     context.subscriptions.push(newDrawingCommand);

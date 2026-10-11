@@ -15,18 +15,28 @@ exports.run = async function () {
         const extension = vscode.extensions.getExtension('drawmotive.vscode-drawmotive');
         assert.ok(extension, 'Candidate VSIX must be installed');
         assert.ok(extension.extensionPath.startsWith(process.env.DRAWMOTIVE_HOST_EXTENSIONS + path.sep), 'Product must load from installed VSIX');
-        await extension.activate();
-        assert.equal(extension.isActive, true);
         browser = await retry(() => chromium.connectOverCDP(process.env.DRAWMOTIVE_HOST_CDP), 20000);
         const page = browser.contexts().flatMap(context => context.pages()).find(page => page.url().includes('workbench'));
         assert.ok(page, 'Actual VS Code workbench must expose CDP');
+        const ordinary = vscode.Uri.file(path.join(process.env.DRAWMOTIVE_HOST_WORKSPACE, 'ordinary.png'));
+        await vscode.workspace.fs.writeFile(ordinary, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64'));
+        await vscode.commands.executeCommand('vscode.open', ordinary);
+        await retry(() => {
+            const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+            assert.ok(input instanceof vscode.TabInputCustom);
+            assert.equal(input.viewType, 'imagePreview.previewEditor', 'Ordinary PNG must use the built-in image editor');
+        }, 10000);
+        assert.equal(extension.isActive, false, 'Ordinary PNG must not activate DrawMotive');
+        evidence.checks.push('ordinary .png opens the built-in image editor without activating DrawMotive');
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
         // Run the contributed command, including its actual Save dialog.
         const creation = vscode.commands.executeCommand('drawmotive.newDrawing');
         const pathInput = page.locator('.quick-input-widget input').first();
         await pathInput.waitFor({ timeout: 20000 });
-        await pathInput.fill(uri.fsPath.replace(/.draw.png$/, '.png'));
+        await pathInput.fill(uri.fsPath.replace(/\.draw\.png$/, '.png'));
         await pathInput.press('Enter');
         await creation;
+        assert.equal(extension.isActive, true);
         let webview = await findWebview(browser);
         await ready(webview);
         const blank = Buffer.from(await vscode.workspace.fs.readFile(uri));
@@ -52,14 +62,19 @@ exports.run = async function () {
         evidence.checks.push('native canvas input changes the document and host Save writes the WASM-encoded PNG');
         await vscode.commands.executeCommand('workbench.action.closeAllEditors');
         await retry(async () => { assert.equal(await runtime.locator('canvas').count().catch(() => 0), 0); }, 10000);
-        await vscode.commands.executeCommand('vscode.openWith', uri, 'drawmotive.editor');
+        await vscode.commands.executeCommand('vscode.open', uri);
+        await retry(() => {
+            const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+            assert.ok(input instanceof vscode.TabInputCustom);
+            assert.equal(input.viewType, 'drawmotive.editor', '*.draw.png must automatically select DrawMotive');
+        }, 10000);
         webview = await findWebview(browser);
         await ready(webview);
         runtime = await findRuntime(webview);
         await runtime.getByTestId('editor-action-host.save').click();
         await webview.waitForFunction(() => document.getElementById('status').textContent === 'Saved');
         assert.deepEqual(await pixels(page, await vscode.workspace.fs.readFile(uri)), await pixels(page, edited), 'Reopen and unchanged Save must preserve the drawing pixels');
-        evidence.checks.push('close cleans up the webview; reopen imports the embedded document and unchanged Save preserves its drawing pixels');
+        evidence.checks.push('close cleans up the webview; .draw.png automatically opens DrawMotive and unchanged Save preserves its drawing pixels');
         // Write through the actual filesystem while the runtime has dirty edits.
         await drawRectangle(runtime, 120);
         await webview.waitForFunction(() => document.getElementById('status').textContent === 'Unsaved changes');

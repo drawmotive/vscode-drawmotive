@@ -25,6 +25,8 @@ export function activate(context: vscode.ExtensionContext) {
     // Register command to create new drawing
     const newDrawingCommand = vscode.commands.registerCommand('drawmotive.newDrawing', async () => {
         const uri = await vscode.window.showSaveDialog({
+            // Dialog extensions describe the PNG container; automatic editor
+            // association is restricted to *.draw.png by package.json.
             filters: {
                 'Drawmotive Diagrams': ['png']
             },

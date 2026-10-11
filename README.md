@@ -34,6 +34,9 @@ Create professional technical diagrams, flowcharts, and architecture visualizati
 ### Edit Existing Diagrams
 
 Simply click any `.draw.png` file in your workspace - it opens automatically in the Drawmotive editor.
+Ordinary `.png` files continue to use VS Code's built-in image editor. The PNG
+filter in the New Diagram save dialog does not change this file association;
+new drawing paths always end in `.draw.png`.
 
 ## 💡 Features
 
@@ -92,7 +95,8 @@ code diagram.draw.png
 | Delivery | VSIX with the locked public editor runtime | This repository is not an npm product |
 
 The 2026-10-01 standalone audit ran Linux Node 22.23.2/npm 10.9.8 unit tests
-and compilation. Windows/macOS, actual VS Code Extension Hosts and remote
+and compilation. Candidate integration tests also passed in the actual Linux
+VS Code 1.101.0 Extension Host with Node 22.15.1. Windows/macOS and remote
 tunnels still require verification. The embedded editor's verified browser
 boundary is Chromium; browser-only VS Code hosts are not currently verified.
 
@@ -228,8 +232,8 @@ extension hosts. PNG encoding and embedded document validation belong to that
 runtime. A successful file write confirms only the exported revision, so edits
 made during saving remain unsaved. External file changes request reload approval
 when the editor has unsaved changes. New drawings are exported by a temporary
-runtime before their file is created. Desktop VS Code and remote tunnels still
-require manual verification.
+runtime before their file is created. Linux desktop candidate tests cover this
+workflow; Windows/macOS and remote tunnels still require verification.
 
 Release scripts still enforce `.release/target.json`; the already-published
 0.2.1 Marketplace version remains deferred until a future release is enrolled.
@@ -240,4 +244,23 @@ and publish scripts retain eligibility checks. See
 redistribution requirements.
 Vulnerability reports follow [Security reporting](SECURITY.md).
 
-真实 Extension Host 集成测试：在根目录运行 `npm run component -- vscode-editor test:host:candidate <绝对 Editor 包目录或 .tgz>`。测试构建并安装独立候选 VSIX，通过真实 VS Code webview 验证创建、编辑、保存、重开和文件变更确认。默认下载 VS Code 1.101.0，可用 `VSCODE_VERSION` 指定版本；Linux 无 DISPLAY 时使用 `xvfb-run`。证据保留在命令输出的临时目录。不会发布扩展或改写常规 dist、Editor 锁定依赖和封存 npm 包。
+### Actual VS Code Host Tests
+
+Test an explicitly selected Editor candidate in the actual VS Code workbench:
+
+```bash
+npm run test:host:candidate -- /absolute/path/to/editor-package
+npm run test:host:candidate -- /absolute/path/to/drawmotive-editor.tgz
+```
+
+The command builds and installs an isolated candidate VSIX, then verifies file
+associations, creation, editing, saving, reopening, and external-file reload
+confirmation in real webviews. Ordinary PNG files must open in the built-in
+image editor without activating DrawMotive; `.draw.png` files must select
+DrawMotive automatically.
+
+Tests download VS Code 1.101.0 by default. Set `VSCODE_VERSION` to test another
+version. Linux uses `xvfb-run` when `DISPLAY` is unset. Results and screenshots
+remain in the temporary directory printed by the command. This does not publish
+the extension or change the regular `dist/` directory, locked Editor dependency,
+or sealed npm archives.

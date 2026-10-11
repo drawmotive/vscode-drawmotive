@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
@@ -17,30 +18,42 @@ const version = process.env.VSCODE_VERSION || '1.101.0';
 /** Install an explicitly selected candidate as a real VSIX. The driver lives
  * in a separate development extension, so package URLs, CSP and activation
  * are exercised by VS Code itself. Normal dist and registry locks are untouched. */
-async function main(input) {
-    assert.ok(input && path.isAbsolute(input), 'Usage: npm run test:host:candidate -- <absolute Editor package directory or .tgz>');
+async function main(input, retained = false) {
+    assert.ok(input && path.isAbsolute(input), 'Select an absolute Editor package or retained VSIX path');
     const artifacts = await mkdtemp(path.join(os.tmpdir(), 'drawmotive-vscode-host-'));
     console.log('VS Code host artifacts: ' + artifacts);
-    const extracted = path.join(artifacts, 'extracted');
-    await mkdir(extracted);
-    const packageRoot = await candidatePackage(input, extracted);
-    const { entry, manifest: sdk } = await editorEntry(packageRoot);
-    const { verifyAssets } = await import(pathToFileURL(path.join(packageRoot, 'scripts/verify-assets.mjs')).href);
-    const native = await verifyAssets(packageRoot);
-    const product = path.join(artifacts, 'product');
-    const dist = path.join(product, 'dist');
-    await stageEditor({ root, packageRoot, entry, destination: dist });
-    // Bundle the actual production entry; only its output directory changes.
-    await command(process.execPath, [path.join(root, 'node_modules/webpack-cli/bin/cli.js'), '--mode', 'production', '--output-path', dist], { cwd: root });
-    const manifest = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
-    // VSIX is self-contained. Omit build hooks so vsce cannot restage alpha.6.
-    delete manifest.scripts;
-    delete manifest.devDependencies;
-    delete manifest.dependencies;
-    await writeFile(path.join(product, 'package.json'), JSON.stringify(manifest, null, 2));
-    for (const file of ['README.md', 'LICENSE', 'icon.png']) await cp(path.join(root, file), path.join(product, file));
-    const vsix = path.join(artifacts, 'candidate.vsix');
-    await command(process.execPath, [path.join(root, 'node_modules/@vscode/vsce/vsce'), 'package', '--no-dependencies', '--out', vsix], { cwd: product });
+    let vsix, sdk, native, identity;
+    if (retained) {
+        // Release testing installs these exact bytes and never rebuilds them.
+        identity = await require('../.release/vsix.cjs').verifyVsix(input, root);
+        vsix = path.join(artifacts, 'candidate.vsix');
+        await cp(input, vsix);
+        assert.deepEqual(await readFile(vsix), await readFile(input));
+        ({ manifest: sdk } = await editorEntry(path.join(root, 'node_modules/@drawmotive/editor')));
+        native = { privateSource: { commit: JSON.parse(await readFile(path.join(root, 'node_modules/@drawmotive/editor/generated/editor-manifest.json'), 'utf8')).privateSource.commit } };
+    } else {
+        const extracted = path.join(artifacts, 'extracted');
+        await mkdir(extracted);
+        const packageRoot = await candidatePackage(input, extracted);
+        const selected = await editorEntry(packageRoot);
+        const { entry } = selected; sdk = selected.manifest;
+        const { verifyAssets } = await import(pathToFileURL(path.join(packageRoot, 'scripts/verify-assets.mjs')).href);
+        native = await verifyAssets(packageRoot);
+        const product = path.join(artifacts, 'product');
+        const dist = path.join(product, 'dist');
+        await stageEditor({ root, packageRoot, entry, destination: dist });
+        // Bundle the actual production entry; only its output directory changes.
+        await command(process.execPath, [path.join(root, 'node_modules/webpack-cli/bin/cli.js'), '--mode', 'production', '--output-path', dist], { cwd: root });
+        const manifest = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
+        // VSIX is self-contained. Omit build hooks so vsce cannot restage alpha.6.
+        delete manifest.scripts;
+        delete manifest.devDependencies;
+        delete manifest.dependencies;
+        await writeFile(path.join(product, 'package.json'), JSON.stringify(manifest, null, 2));
+        for (const file of ['README.md', 'LICENSE', 'icon.png']) await cp(path.join(root, file), path.join(product, file));
+        vsix = path.join(artifacts, 'candidate.vsix');
+        await command(process.execPath, [path.join(root, 'node_modules/@vscode/vsce/vsce'), 'package', '--no-dependencies', '--out', vsix], { cwd: product });
+    }
     const executable = await downloadAndUnzipVSCode(version);
     const userData = path.join(artifacts, 'user-data');
     const extensions = path.join(artifacts, 'extensions');
@@ -58,7 +71,7 @@ async function main(input) {
         'telemetry.telemetryLevel': 'off', 'update.mode': 'none',
         'git.enabled': false, 'security.workspace.trust.enabled': false,
     }));
-    await writeFile(path.join(artifacts, 'candidate.json'), JSON.stringify({ vscode: version, sdk: sdk.version, nativeSource: native.privateSource.commit, vsix }, null, 2));
+    await writeFile(path.join(artifacts, 'candidate.json'), JSON.stringify({ vscode: version, sdk: sdk.version, nativeSource: native.privateSource.commit, identity, vsix, sha256: createHash('sha256').update(await readFile(vsix)).digest('hex') }, null, 2));
     const environment = { ...process.env, XDG_RUNTIME_DIR: runtime, DONT_PROMPT_WSL_INSTALL: '1' };
     const [cli, ...cliArgs] = resolveCliArgsFromVSCodeExecutablePath(executable, { reuseMachineInstall: true });
     await command(cli, [...cliArgs, '--no-sandbox', '--user-data-dir', userData, '--extensions-dir', extensions, '--install-extension', vsix, '--force'], { env: environment });
@@ -110,4 +123,5 @@ async function command(executable, args, options = {}) {
     });
 }
 
-main(process.argv[2]).catch(error => { console.error(error); process.exitCode = 1; });
+const args = process.argv.slice(2);
+main(args.at(-1), args[0] === '--vsix').catch(error => { console.error(error); process.exitCode = 1; });

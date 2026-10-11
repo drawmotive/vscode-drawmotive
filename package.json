@@ -75,7 +75,9 @@
     "test:browser": "npm run compile && tsc && node --test --test-concurrency=1 test/*.browser.cjs",
     "test:browser:candidate": "node scripts/test-browser-candidate.cjs",
     "build": "node .release/check.cjs --build && npm run compile -- --mode production",
-    "test:host:candidate": "node scripts/test-host-candidate.mjs"
+    "test:host:candidate": "node scripts/test-host-candidate.mjs",
+    "test:host:vsix": "node scripts/test-host-candidate.mjs --vsix",
+    "release:retained": "node scripts/publish-retained.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

@@ -264,3 +264,14 @@ version. Linux uses `xvfb-run` when `DISPLAY` is unset. Results and screenshots
 remain in the temporary directory printed by the command. This does not publish
 the extension or change the regular `dist/` directory, locked Editor dependency,
 or sealed npm archives.
+
+For a release, build and package once, then test the exact retained archive:
+
+```bash
+npm run test:host:vsix -- /absolute/path/to/vscode-drawmotive.vsix
+```
+
+This mode verifies the archive against the installed SDK and authored webview,
+then installs those same bytes. The printed evidence includes its SHA-256 hash.
+The manual pre-release workflow publishes a retained GitHub release archive
+with a matching receipt; it never packages a replacement at publication.

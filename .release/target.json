@@ -5,7 +5,7 @@
   "name": "vscode-drawmotive",
   "version": "0.2.5",
   "dependencies": {
-    "@drawmotive/editor": "0.2.2-alpha.6"
+    "@drawmotive/editor": "0.2.2-alpha.7"
   },
   "native": false,
   "publishable": true

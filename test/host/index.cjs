@@ -1,0 +1,161 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const path = require('node:path');
+const vscode = require('vscode');
+const { chromium } = require('playwright');
+
+// This driver automates the real workbench and installed product. It neither
+// replaces acquireVsCodeApi nor reaches into the provider or SDK internals.
+exports.run = async function () {
+    const artifacts = process.env.DRAWMOTIVE_HOST_ARTIFACTS;
+    const uri = vscode.Uri.file(path.join(process.env.DRAWMOTIVE_HOST_WORKSPACE, 'host-test.draw.png'));
+    const evidence = { vscode: vscode.version, node: process.versions.node, checks: [] };
+    let browser;
+    try {
+        const extension = vscode.extensions.getExtension('drawmotive.vscode-drawmotive');
+        assert.ok(extension, 'Candidate VSIX must be installed');
+        assert.ok(extension.extensionPath.startsWith(process.env.DRAWMOTIVE_HOST_EXTENSIONS + path.sep), 'Product must load from installed VSIX');
+        await extension.activate();
+        assert.equal(extension.isActive, true);
+        browser = await retry(() => chromium.connectOverCDP(process.env.DRAWMOTIVE_HOST_CDP), 20000);
+        const page = browser.contexts().flatMap(context => context.pages()).find(page => page.url().includes('workbench'));
+        assert.ok(page, 'Actual VS Code workbench must expose CDP');
+        // Run the contributed command, including its actual Save dialog.
+        const creation = vscode.commands.executeCommand('drawmotive.newDrawing');
+        const pathInput = page.locator('.quick-input-widget input').first();
+        await pathInput.waitFor({ timeout: 20000 });
+        await pathInput.fill(uri.fsPath.replace(/.draw.png$/, '.png'));
+        await pathInput.press('Enter');
+        await creation;
+        let webview = await findWebview(browser);
+        await ready(webview);
+        const blank = Buffer.from(await vscode.workspace.fs.readFile(uri));
+        assert.deepEqual(blank.subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+        evidence.checks.push('contributed New Diagram command creates a complete PNG before opening the custom editor');
+        let runtime = await findRuntime(webview);
+        assert.match(webview.url(), /^vscode-webview:/);
+        const scriptUrl = await webview.locator('script[src]').getAttribute('src');
+        assert.match(scriptUrl, /vscode-resource/);
+        const csp = await webview.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
+        assert.match(csp, /default-src 'none'/);
+        assert.match(csp, /script-src 'nonce-/);
+        evidence.checks.push('installed asWebviewUri modules and strict CSP load the HTTP WASM frame with the real MessagePort handshake');
+        assert.equal(await runtime.getByTestId('home-toolbar-profile').count(), 0);
+        assert.equal(await runtime.getByTestId('badge-not-syncing').count(), 0);
+        assert.equal(await runtime.locator('script[src*="googletagmanager"], script[src*="google-analytics"]').count(), 0);
+        await drawRectangle(runtime);
+        await webview.waitForFunction(() => document.getElementById('status').textContent === 'Unsaved changes');
+        await runtime.getByTestId('editor-action-host.save').click();
+        await webview.waitForFunction(() => document.getElementById('status').textContent === 'Saved');
+        const edited = Buffer.from(await vscode.workspace.fs.readFile(uri));
+        assert.ok(!edited.equals(blank), 'Drawing a rectangle must change the saved PNG');
+        evidence.checks.push('native canvas input changes the document and host Save writes the WASM-encoded PNG');
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        await retry(async () => { assert.equal(await runtime.locator('canvas').count().catch(() => 0), 0); }, 10000);
+        await vscode.commands.executeCommand('vscode.openWith', uri, 'drawmotive.editor');
+        webview = await findWebview(browser);
+        await ready(webview);
+        runtime = await findRuntime(webview);
+        await runtime.getByTestId('editor-action-host.save').click();
+        await webview.waitForFunction(() => document.getElementById('status').textContent === 'Saved');
+        assert.deepEqual(await pixels(page, await vscode.workspace.fs.readFile(uri)), await pixels(page, edited), 'Reopen and unchanged Save must preserve the drawing pixels');
+        evidence.checks.push('close cleans up the webview; reopen imports the embedded document and unchanged Save preserves its drawing pixels');
+        // Write through the actual filesystem while the runtime has dirty edits.
+        await drawRectangle(runtime, 120);
+        await webview.waitForFunction(() => document.getElementById('status').textContent === 'Unsaved changes');
+        await fs.writeFile(uri.fsPath, blank);
+        const reloadDialog = page.getByRole('dialog');
+        await reloadDialog.waitFor({ timeout: 20000 });
+        await reloadDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+        await webview.waitForFunction(() => document.getElementById('status').textContent.includes('keeping your edits'));
+        await fs.writeFile(uri.fsPath, edited);
+        await reloadDialog.waitFor({ timeout: 20000 });
+        await reloadDialog.getByRole('button', { name: 'Reload', exact: true }).click();
+        await ready(webview);
+        await runtime.getByTestId('editor-action-host.save').click();
+        await webview.waitForFunction(() => document.getElementById('status').textContent === 'Saved');
+        assert.deepEqual(await pixels(page, await vscode.workspace.fs.readFile(uri)), await pixels(page, edited));
+        evidence.checks.push('real filesystem watcher asks before discarding dirty edits; Cancel keeps edits and Reload imports disk bytes');
+        await page.screenshot({ path: path.join(artifacts, 'editor.png') });
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        await fs.writeFile(path.join(artifacts, 'result.json'), JSON.stringify(evidence, null, 2));
+        console.log(JSON.stringify(evidence));
+    } catch (error) {
+        evidence.error = error.stack || String(error);
+        await fs.writeFile(path.join(artifacts, 'result.json'), JSON.stringify(evidence, null, 2));
+        for (const [index, page] of (browser?.contexts().flatMap(context => context.pages()) || []).entries()) {
+            await page.screenshot({ path: path.join(artifacts, 'failure-' + index + '.png') }).catch(() => {});
+        }
+        throw error;
+    } finally { await browser?.close(); }
+};
+
+async function retry(action, timeout = 120000) {
+    const deadline = Date.now() + timeout;
+    let last;
+    while (Date.now() < deadline) {
+        try { return await action(); } catch (error) { last = error; }
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    throw new Error('Host test timed out: ' + last?.message, { cause: last });
+}
+async function findWebview(browser) {
+    return retry(async () => {
+        for (const page of browser.contexts().flatMap(context => context.pages())) {
+            for (const frame of page.frames()) {
+                if (await frame.locator('#editor-config').count().catch(() => 0)) return frame;
+            }
+        }
+        throw new Error('DrawMotive webview not found');
+    });
+}
+async function findRuntime(webview) {
+    return retry(async () => {
+        const runtime = webview.childFrames().find(frame => frame.url().includes('/embed.html'));
+        assert.ok(runtime, 'Direct SDK runtime frame not found');
+        await runtime.getByTestId('editor-action-host.save').waitFor();
+        return runtime;
+    });
+}
+async function ready(webview) {
+    await webview.waitForFunction(() => document.getElementById('status').textContent === 'Ready', null, { timeout: 120000 });
+}
+async function drawRectangle(runtime, offset = 0) {
+    await runtime.getByTestId('home-toolbar-rectangle').click();
+    const canvas = await runtime.locator('canvas').first().boundingBox();
+    assert.ok(canvas);
+    const mouse = runtime.page().mouse;
+    await mouse.move(canvas.x + 250 + offset, canvas.y + 240);
+    await mouse.down();
+    await mouse.move(canvas.x + 340 + offset, canvas.y + 330, { steps: 8 });
+    await mouse.up();
+}
+
+
+// PNG exports do not promise canonical document serialization. Decode with
+// Chromium to compare actual raster content;
+// managed tests separately assert stable item identities and canonical models.
+async function pixels(page, bytes) {
+    return page.evaluate(async base64 => {
+        const data = Uint8Array.from(atob(base64), value => value.charCodeAt(0));
+        const bitmap = await createImageBitmap(new Blob([data], { type: 'image/png' }));
+        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+        const context = canvas.getContext('2d');
+        context.drawImage(bitmap, 0, 0);
+        const pixels = context.getImageData(0, 0, bitmap.width, bitmap.height).data;
+        const digest = await crypto.subtle.digest('SHA-256', pixels);
+        bitmap.close();
+        return { width: canvas.width, height: canvas.height, hash: Array.from(new Uint8Array(digest)).join(',') };
+    }, Buffer.from(bytes).toString('base64'));
+}
+
+
+// Ordinary workbench mode permits real modal dialogs; extensionTestsPath would
+// activate VS Code's test-only dialog refusal. Results, not the process exit
+// code alone, determine success in the parent launcher.
+exports.activate = function () {
+    exports.run().then(
+        () => vscode.commands.executeCommand('workbench.action.quit'),
+        error => { console.error(error); return vscode.commands.executeCommand('workbench.action.quit'); },
+    );
+};

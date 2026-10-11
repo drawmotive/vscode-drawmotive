@@ -1,0 +1,12 @@
+{
+  "name": "drawmotive-host-test-driver",
+  "version": "0.0.0",
+  "publisher": "drawmotive-test",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "main": "index.cjs",
+  "activationEvents": [
+    "onStartupFinished"
+  ]
+}

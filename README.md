@@ -239,3 +239,5 @@ and publish scripts retain eligibility checks. See
 [Contributing](CONTRIBUTING.md) and [NOTICE](NOTICE) for the public build and
 redistribution requirements.
 Vulnerability reports follow [Security reporting](SECURITY.md).
+
+真实 Extension Host 集成测试：在根目录运行 `npm run component -- vscode-editor test:host:candidate <绝对 Editor 包目录或 .tgz>`。测试构建并安装独立候选 VSIX，通过真实 VS Code webview 验证创建、编辑、保存、重开和文件变更确认。默认下载 VS Code 1.101.0，可用 `VSCODE_VERSION` 指定版本；Linux 无 DISPLAY 时使用 `xvfb-run`。证据保留在命令输出的临时目录。不会发布扩展或改写常规 dist、Editor 锁定依赖和封存 npm 包。

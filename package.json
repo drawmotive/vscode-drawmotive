@@ -74,13 +74,15 @@
     "test": "tsc && node --test --test-concurrency=1 test/*.test.cjs",
     "test:browser": "npm run compile && tsc && node --test --test-concurrency=1 test/*.browser.cjs",
     "test:browser:candidate": "node scripts/test-browser-candidate.cjs",
-    "build": "node .release/check.cjs --build && npm run compile -- --mode production"
+    "build": "node .release/check.cjs --build && npm run compile -- --mode production",
+    "test:host:candidate": "node scripts/test-host-candidate.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
     "@types/vscode": "1.95.0",
     "@typescript-eslint/eslint-plugin": "^8.71.1",
     "@typescript-eslint/parser": "^8.71.1",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^4.0.0",
     "eslint": "^10.12.0",
     "globals": "^17.13.0",

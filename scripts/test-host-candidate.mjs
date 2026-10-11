@@ -89,7 +89,7 @@ async function main(input, retained = false) {
     });
     const result = JSON.parse(await readFile(path.join(artifacts, 'result.json'), 'utf8'));
     assert.ok(!result.error, result.error);
-    assert.equal(result.checks.length, 6, 'Driver must complete every host check');
+    assert.equal(result.checks.length, 8, 'Driver must complete every host check');
     console.log('Real VS Code host checks passed. Evidence: ' + artifacts);
 }
 

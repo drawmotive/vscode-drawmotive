@@ -50,13 +50,18 @@ exports.run = async function () {
         assert.match(csp, /default-src 'none'/);
         assert.match(csp, /script-src 'nonce-/);
         evidence.checks.push('installed asWebviewUri modules and strict CSP load the HTTP WASM frame with the real MessagePort handshake');
+        const bounds = await webview.evaluate(() => {
+            const rect = document.getElementById('editor').getBoundingClientRect();
+            return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, viewportWidth: innerWidth, viewportHeight: innerHeight };
+        });
+        assert.deepEqual(bounds, { x: 0, y: 0, width: bounds.viewportWidth, height: bounds.viewportHeight, viewportWidth: bounds.viewportWidth, viewportHeight: bounds.viewportHeight });
+        assert.equal(await webview.locator('#status').isVisible(), false);
+        evidence.checks.push('editor fills the webview bounds and normal status messages occupy no space');
         assert.equal(await runtime.getByTestId('home-toolbar-profile').count(), 0);
         assert.equal(await runtime.getByTestId('badge-not-syncing').count(), 0);
         assert.equal(await runtime.locator('script[src*="googletagmanager"], script[src*="google-analytics"]').count(), 0);
         await drawRectangle(runtime);
-        await webview.waitForFunction(() => document.getElementById('status').textContent === 'Unsaved changes');
-        await runtime.getByTestId('editor-action-host.save').click();
-        await webview.waitForFunction(() => document.getElementById('status').textContent === 'Saved');
+        await save(runtime, uri);
         const edited = Buffer.from(await vscode.workspace.fs.readFile(uri));
         assert.ok(!edited.equals(blank), 'Drawing a rectangle must change the saved PNG');
         evidence.checks.push('native canvas input changes the document and host Save writes the WASM-encoded PNG');
@@ -71,26 +76,45 @@ exports.run = async function () {
         webview = await findWebview(browser);
         await ready(webview);
         runtime = await findRuntime(webview);
-        await runtime.getByTestId('editor-action-host.save').click();
-        await webview.waitForFunction(() => document.getElementById('status').textContent === 'Saved');
+        await save(runtime, uri);
         assert.deepEqual(await pixels(page, await vscode.workspace.fs.readFile(uri)), await pixels(page, edited), 'Reopen and unchanged Save must preserve the drawing pixels');
         evidence.checks.push('close cleans up the webview; .draw.png automatically opens DrawMotive and unchanged Save preserves its drawing pixels');
         // Write through the actual filesystem while the runtime has dirty edits.
         await drawRectangle(runtime, 120);
-        await webview.waitForFunction(() => document.getElementById('status').textContent === 'Unsaved changes');
         await fs.writeFile(uri.fsPath, blank);
         const reloadDialog = page.getByRole('dialog');
         await reloadDialog.waitFor({ timeout: 20000 });
         await reloadDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-        await webview.waitForFunction(() => document.getElementById('status').textContent.includes('keeping your edits'));
+        await reloadDialog.waitFor({ state: 'hidden' });
+        await ready(webview);
         await fs.writeFile(uri.fsPath, edited);
         await reloadDialog.waitFor({ timeout: 20000 });
         await reloadDialog.getByRole('button', { name: 'Reload', exact: true }).click();
         await ready(webview);
-        await runtime.getByTestId('editor-action-host.save').click();
-        await webview.waitForFunction(() => document.getElementById('status').textContent === 'Saved');
+        await save(runtime, uri);
         assert.deepEqual(await pixels(page, await vscode.workspace.fs.readFile(uri)), await pixels(page, edited));
         evidence.checks.push('real filesystem watcher asks before discarding dirty edits; Cancel keeps edits and Reload imports disk bytes');
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        const emptyUri = vscode.Uri.file(path.join(process.env.DRAWMOTIVE_HOST_WORKSPACE, 'empty.draw.png'));
+        await vscode.workspace.fs.writeFile(emptyUri, new Uint8Array());
+        await vscode.commands.executeCommand('vscode.open', emptyUri);
+        webview = await findWebview(browser);
+        await ready(webview);
+        runtime = await findRuntime(webview);
+        assert.equal((await vscode.workspace.fs.readFile(emptyUri)).length, 0, 'Opening a zero-byte file must not write it');
+        assert.equal(await webview.locator('#status').isVisible(), false);
+        await drawRectangle(runtime);
+        await save(runtime, emptyUri);
+        const emptyEdited = Buffer.from(await vscode.workspace.fs.readFile(emptyUri));
+        assert.deepEqual(emptyEdited.subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        await vscode.commands.executeCommand('vscode.open', emptyUri);
+        webview = await findWebview(browser);
+        await ready(webview);
+        runtime = await findRuntime(webview);
+        await save(runtime, emptyUri);
+        assert.deepEqual(await pixels(page, await vscode.workspace.fs.readFile(emptyUri)), await pixels(page, emptyEdited));
+        evidence.checks.push('zero-byte .draw.png opens a blank editable canvas without writes or errors and saves/reopens as a complete drawing PNG');
         await page.screenshot({ path: path.join(artifacts, 'editor.png') });
         await vscode.commands.executeCommand('workbench.action.closeAllEditors');
         await fs.writeFile(path.join(artifacts, 'result.json'), JSON.stringify(evidence, null, 2));
@@ -133,7 +157,17 @@ async function findRuntime(webview) {
     });
 }
 async function ready(webview) {
-    await webview.waitForFunction(() => document.getElementById('status').textContent === 'Ready', null, { timeout: 120000 });
+    const runtime = await findRuntime(webview);
+    await runtime.waitForFunction(() => !document.querySelector('[data-testid="editor-action-host.save"]').disabled, null, { timeout: 120000 });
+    assert.equal(await webview.locator('#status').isVisible(), false);
+}
+async function save(runtime, uri) {
+    const before = await fs.stat(uri.fsPath, { bigint: true });
+    await runtime.getByTestId('editor-action-host.save').click();
+    await retry(async () => {
+        assert.notEqual((await fs.stat(uri.fsPath, { bigint: true })).mtimeNs, before.mtimeNs, 'Save must finish the actual file write');
+        assert.equal(await runtime.getByTestId('editor-action-host.save').isEnabled(), true);
+    });
 }
 async function drawRectangle(runtime, offset = 0) {
     await runtime.getByTestId('home-toolbar-rectangle').click();

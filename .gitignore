@@ -14,8 +14,3 @@ node_modules
 media/
 dist/
 out/
-
-!.release/release-marketplace.mjs
-!.release/release-registry.mjs
-!.release/release-download.mjs
-!.release/process.mjs

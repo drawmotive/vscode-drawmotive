@@ -1,10 +1,10 @@
-name: Publish Retained Pre-release
+name: Verify GitHub Pre-release
 
 on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: GitHub prerelease containing the tested VSIX and receipt
+        description: GitHub preview tag in vX.Y.Z-pre.N format
         required: true
       archive:
         description: Retained VSIX filename
@@ -14,27 +14,28 @@ permissions:
   contents: read
 
 jobs:
-  publish:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install locked publication tooling
-        run: npm ci --ignore-scripts
-      - name: Download retained evidence
+      - name: Download GitHub preview evidence
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
           ARCHIVE: ${{ inputs.archive }}
         run: |
           gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ARCHIVE" --pattern receipt.json --dir "$RUNNER_TEMP/retained"
-      - name: Publish exact tested bytes
-        run: npm run release:retained -- "$RUNNER_TEMP/retained"
+      - name: Verify exact tested bytes
+        run: npm run release:verify-retained -- "$RUNNER_TEMP/retained"
         env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          ARCHIVE: ${{ inputs.archive }}
       - uses: actions/upload-artifact@v4
         with:
-          name: marketplace-publication
-          path: ${{ runner.temp }}/retained/publication.json
+          name: github-preview-verification
+          path: ${{ runner.temp }}/retained/verification.json

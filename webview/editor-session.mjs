@@ -16,7 +16,7 @@ export function startEditorSession({ createEditor, vscode, container, status, as
     let saving;
     let imports = Promise.resolve();
     let phase = mode === 'create' ? 'Creating diagram…' : 'Loading editor…';
-    let notice;
+    let loadError;
     let actionEnabled;
 
     const send = message => { if (!disposed) vscode.postMessage({ ...message, sessionId }); };
@@ -35,7 +35,10 @@ export function startEditorSession({ createEditor, vscode, container, status, as
     };
     const update = () => {
         if (disposed) return;
-        status.textContent = phase || notice || (dirty() ? 'Unsaved changes' : 'Ready');
+        // Only file/PNG load failures occupy webview space. Progress and save
+        // errors belong to the action state and VS Code notifications.
+        status.textContent = loadError || '';
+        status.hidden = !loadError;
         const enabled = loaded && currentState?.health === 'healthy' && !saving && !phase;
         if (editor && mode === 'edit' && actionEnabled !== enabled) {
             actionEnabled = enabled;
@@ -44,9 +47,7 @@ export function startEditorSession({ createEditor, vscode, container, status, as
     };
     const report = error => {
         if (disposed) return;
-        notice = errorText(error);
-        update();
-        send({ type: 'error', error: notice });
+        send({ type: 'error', error: errorText(error) });
     };
     const request = (type, data, signal) => {
         if (disposed || signal?.aborted) return Promise.reject(signal?.reason ?? new Error('Editor closed.'));
@@ -74,7 +75,6 @@ export function startEditorSession({ createEditor, vscode, container, status, as
         if (saving || !loaded || currentState?.health !== 'healthy' || phase) return Promise.reject(new Error('The document is not ready to save.'));
         // Keep editing enabled: later edits must survive this snapshot's ack.
         phase = 'Saving…';
-        notice = undefined;
         const operation = (async () => {
             try {
                 const snapshot = await completed(editor.exportSnapshot({ formats: ['png'], png: { embedDocument: true } }));
@@ -83,7 +83,6 @@ export function startEditorSession({ createEditor, vscode, container, status, as
                 savedSource = snapshot.png.base64;
                 loadedSource = undefined;
                 currentState = await completed(editor.getState());
-                notice = dirty() ? undefined : 'Saved';
             } catch (error) {
                 report(error);
                 throw error;
@@ -102,7 +101,11 @@ export function startEditorSession({ createEditor, vscode, container, status, as
         await ready;
         await saving?.catch(() => {});
         if (disposed || typeof message.png !== 'string') return;
-        if (loaded && (message.png === loadedSource || message.png === savedSource)) return;
+        if (loaded && (message.png === loadedSource || message.png === savedSource)) {
+            loadError = undefined;
+            update();
+            return;
+        }
         let previous;
         const wasLoaded = loaded;
         try {
@@ -116,11 +119,14 @@ export function startEditorSession({ createEditor, vscode, container, status, as
             if (loaded && dirty()) {
                 const decision = await request('confirmReload', {}, controller.signal);
                 if (decision.reload !== true) {
-                    notice = 'File changed on disk; keeping your edits.';
                     return;
                 }
             }
-            await completed(editor.replacePngDocument(message.png));
+            // A zero-byte .draw.png is a host-created blank document, not an
+            // invalid PNG. Reset through the SDK so storage/history/revisions
+            // share the same authority as ordinary document replacement.
+            if (message.png === '') await completed(editor.clearDocument());
+            else await completed(editor.replacePngDocument(message.png));
             // The new baseline belongs to the completed replacement, even if
             // a later viewport adjustment fails. Viewport does not edit data.
             currentState = await completed(editor.getState());
@@ -128,9 +134,10 @@ export function startEditorSession({ createEditor, vscode, container, status, as
             loadedSource = message.png;
             savedSource = undefined;
             savedRevision = currentState.revision;
-            notice = undefined;
+            loadError = undefined;
             await completed(editor.fitViewport());
         } catch (error) {
+            loadError = errorText(error);
             report(error);
         } finally {
             if (!disposed) {
@@ -154,7 +161,6 @@ export function startEditorSession({ createEditor, vscode, container, status, as
         // Do not expose an editable empty scene while waiting for the file.
         await completed(editor.setEditingEnabled(false));
         unsubscribe = editor.onStateChanged(state => {
-            if (currentState?.revision !== state.revision) notice = undefined;
             currentState = state;
             update();
         });
@@ -165,7 +171,8 @@ export function startEditorSession({ createEditor, vscode, container, status, as
             send({ type: 'creationComplete' });
         } else send({ type: 'ready' });
     })();
-    ready.catch(error => { phase = undefined; report(error); });
+    ready.catch(error => { phase = undefined; update(); report(error); });
+    update();
 
     return {
         ready,
@@ -174,7 +181,7 @@ export function startEditorSession({ createEditor, vscode, container, status, as
             if (['saved', 'createdSaved', 'saveFailed', 'reloadDecision'].includes(message.type)) settle(message);
             else if (mode === 'edit' && ['load', 'external'].includes(message.type)) {
                 imports = imports.then(() => replace(message)).catch(report);
-            } else if (message.type === 'error') { notice = message.error; phase = undefined; update(); }
+            } else if (message.type === 'loadFailed') { loadError = message.error; update(); }
         },
         async dispose() {
             if (disposed) return;

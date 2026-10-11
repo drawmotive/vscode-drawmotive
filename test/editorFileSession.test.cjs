@@ -10,7 +10,7 @@ function fileSession(options = {}) {
     const writes = [];
     let reads = 0;
     const session = new EditorFileSession('session', options.mode ?? 'edit', {
-        read: async () => { reads++; return content; },
+        read: async () => { reads++; if (options.readError) throw new Error(options.readError); return content; },
         write: async value => {
             writes.push(Buffer.from(value));
             if (options.write) await options.write(value);
@@ -38,6 +38,28 @@ test('file transport reads and writes full binary bytes without PNG decoding', a
     f.setFile('complete initial PNG');
     await f.session.fileChanged();
     assert.equal(f.messages.at(-1).png, bytes('complete initial PNG').toString('base64'));
+});
+test('zero-byte files remain opaque transport and load failures carry their own message type', async () => {
+    const f = fileSession(); f.setFile('');
+    await f.send({ type: 'ready' });
+    assert.deepEqual(f.messages, [{ type: 'load', png: '', sessionId: 'session' }]);
+    assert.deepEqual(f.writes, []);
+    const failed = fileSession({ readError: 'Permission denied' });
+    await failed.send({ type: 'ready' });
+    assert.equal(failed.messages[0].type, 'loadFailed');
+    assert.match(failed.messages[0].error, /Permission denied/);
+});
+test('a successful file read after failure reaches the webview even when its bytes are unchanged', async () => {
+    const options = {};
+    const f = fileSession(options);
+    await f.send({ type: 'ready' });
+    options.readError = 'Temporary read failure';
+    await f.session.fileChanged();
+    assert.equal(f.messages.at(-1).type, 'loadFailed');
+    delete options.readError;
+    await f.session.fileChanged();
+    assert.equal(f.messages.at(-1).type, 'external');
+    assert.equal(f.messages.at(-1).png, f.messages[0].png);
 });
 
 test('save acknowledgment and watcher read occur only after successful file write', async () => {

@@ -1,323 +1,62 @@
 # Release Process
 
-The active release authority is the superproject release.json and this checkout’s generated .release/target.json. This `0.2.2-alpha.2` batch updates the embedded editor dependency but does not publish the extension. Marketplace and the package identity remain `0.2.1`. A future preview requires an explicitly reserved numeric Marketplace version; the historical workflows below do not authorize independent version bumps.
+DrawMotive previews are distributed only through GitHub Releases. Marketplace publication is reserved for stable releases. Preview publication never uses `VSCE_PAT`.
 
-This document describes how to publish the DrawMotive VS Code extension to the marketplace.
+## Version authority
 
-## Release Strategy
+The root `release.json` owns release versions and projects the extension target into `.release/target.json`. Do not bump extension versions independently.
 
-DrawMotive uses a **dual release strategy**:
+| Release channel | Coordinated version | GitHub tag and title | Distribution |
+| --- | --- | --- | --- |
+| Preview | `0.2.2-alpha.7` | `v0.2.2-pre.7` | GitHub Release with a tested VSIX |
+| Stable | `X.Y.Z` | `vX.Y.Z` | Marketplace and GitHub Release |
 
-1. **🚧 Pre-releases (Automatic)** - Published automatically on every push to `main`
-2. **🚀 Stable Releases (Manual)** - Published manually via GitHub Actions when ready
+Preview releases use GitHub's prerelease flag and do not advance the latest stable release. The dot-separated preview sequence follows the coordinated alpha sequence: `alpha.8` maps to `pre.8`.
 
-## Prerequisites
+The VSIX manifest retains a numeric `X.Y.Z` version supported by the existing extension tooling. That artifact version is independent of the GitHub preview sequence: coordinated `0.2.2-alpha.8` can identify a VSIX whose internal version is `0.2.7`. The current root field `marketplaceVersion` projects this numeric artifact identity; it does not authorize a preview Marketplace upload. A future stable version must exceed versions already published to Marketplace.
 
-### One-Time Setup
+## Publish a tested preview
 
-1. **Create a Personal Access Token (PAT)** for Visual Studio Marketplace:
-   - Go to Azure DevOps (sign in with your Microsoft account)
-   - Navigate to User Settings → Personal Access Tokens
-   - Click "New Token"
-   - Name: `vscode-drawmotive-publish`
-   - Organization: All accessible organizations
-   - Scopes: Select "Marketplace" > "Manage"
-   - Expiration: Choose appropriate duration
-   - Copy the generated token
+Run repository operations from the root DrawMotive session worktree.
 
-2. **Add Secret to GitHub Repository**:
-   - Go to https://github.com/drawmotive/vscode-drawmotive/settings/secrets/actions
-   - Click "New repository secret"
-   - Name: `VSCE_PAT`
-   - Value: Paste the PAT from step 1
-
-3. **Verify Publisher**:
-   - Ensure you have a publisher account at https://marketplace.visualstudio.com/manage
-   - Publisher ID must match the `publisher` field in `package.json` (currently: `drawmotive`)
-
-## Automatic Pre-releases
-
-### How It Works
-
-**Trigger**: Every push to `main` branch (except documentation and release commits)
-
-**Version Format**: `0.1.0-rc.0` → `0.1.0-rc.1` → `0.1.0-rc.2`
-
-**Process**:
-1. Developer pushes code to `main` branch
-2. GitHub Actions automatically:
-   - Builds and lints the extension
-   - Bumps to next pre-release version (e.g., `0.1.0-rc.1`)
-   - Publishes to VS Code Marketplace with `--pre-release` flag
-   - Creates a GitHub Pre-Release with `.vsix` file attached
-   - **Does NOT commit version changes** (pre-releases are ephemeral)
-
-**What Gets Ignored**:
-- Markdown file changes (`.md`)
-- GitHub workflow changes (`.github/**`)
-- Documentation updates
-- Release commits (commits starting with `chore: release v`)
-
-### Using Pre-releases
-
-**For End Users:**
-1. Open VS Code Extensions
-2. Search for "DrawMotive"
-3. Click "Switch to Pre-Release Version"
-4. VS Code will automatically update to latest pre-release
-
-**For Testers:**
-Download the `.vsix` file from:
-https://github.com/drawmotive/vscode-drawmotive/releases
-
-### Skipping Pre-release
-
-To push to `main` without triggering a pre-release, update only ignored files (documentation, etc.) or include `[skip ci]` in the commit message.
-
-## Manual Stable Releases
-
-### When to Release Stable
-
-Release a stable version when:
-- You've tested pre-release builds thoroughly
-- Features are complete and stable
-- You're ready for production users
-- You want to create a milestone
-
-### Version Bumping Strategy
-
-Follow [Semantic Versioning](https://semver.org/):
-
-- **Patch** (0.1.0 → 0.1.1): Bug fixes, minor improvements
-- **Minor** (0.1.0 → 0.2.0): New features, backward compatible
-- **Major** (0.1.0 → 1.0.0): Breaking changes, major overhauls
-
-### Release Process
-
-1. **Prepare for Release**:
-   - Ensure all pre-releases are tested
-   - Update `CHANGELOG.md` with release notes
-   - Commit and push changes to `main`
-
-2. **Trigger Release Workflow**:
-   - Go to [GitHub Actions](https://github.com/drawmotive/vscode-drawmotive/actions)
-   - Select "Release Stable Version" workflow
-   - Click "Run workflow"
-   - Select version bump: `patch`, `minor`, or `major`
-   - Click "Run workflow"
-
-3. **Workflow Steps** (automated):
-   - Installs dependencies
-   - Runs linting and build
-   - Bumps version in `package.json` (e.g., `0.1.0` → `0.1.1`)
-   - Commits version change: `chore: release v0.1.1`
-   - Creates git tag: `v0.1.1`
-   - Packages extension as `.vsix`
-   - Publishes to VS Code Marketplace (stable channel)
-   - Pushes commit and tag to GitHub
-   - Creates GitHub Release with `.vsix` file
-
-4. **Verify Release**:
-   - Check marketplace: https://marketplace.visualstudio.com/items?itemName=drawmotive.vscode-drawmotive
-   - Verify GitHub release: https://github.com/drawmotive/vscode-drawmotive/releases
-   - Test installation in VS Code
-
-## Release Workflow Comparison
-
-| Feature | Pre-release (Auto) | Stable Release (Manual) |
-|---------|-------------------|------------------------|
-| **Trigger** | Push to `main` | Manual workflow dispatch |
-| **Version** | `x.x.x-rc.N` | `x.x.x` |
-| **Frequency** | Every push | When ready |
-| **Marketplace** | Pre-release channel | Stable channel |
-| **Version Commit** | No | Yes |
-| **Git Tag** | Yes | Yes |
-| **GitHub Release** | Pre-release | Stable release |
-| **Users** | Testers, early adopters | Production users |
-
-## Manual Publishing (Local)
-
-For emergency releases or testing, you can publish manually from your local machine.
-
-### Package Extension
-```bash
-npm run vsce:package
-```
-This creates a `.vsix` file.
-
-### Publish Release
-```bash
-# Set your PAT as environment variable (PowerShell)
-$env:VSCE_PAT = "your-personal-access-token"
-
-# Publish stable release
-npm run vsce:publish
-
-# Or publish pre-release
-npm run vsce:publish-prerelease
-```
-
-### Manual Version Bumping
-```bash
-# For stable releases
-npm run version:patch   # 0.1.0 → 0.1.1
-npm run version:minor   # 0.1.0 → 0.2.0
-npm run version:major   # 0.1.0 → 1.0.0
-
-# For pre-releases
-npm run version:prerelease  # 0.1.0 → 0.1.0-rc.0 or 0.1.0-rc.0 → 0.1.0-rc.1
-```
-
-## Example Workflow
-
-### Typical Development Cycle
-
-1. **Develop Feature**
-   ```bash
-   git checkout -b feature/new-shapes
-   # Make changes
-   git commit -m "feat: add circle and triangle shapes"
-   ```
-
-2. **Merge to Main** (triggers auto pre-release)
-   ```bash
-   git checkout main
-   git merge feature/new-shapes
-   git push origin main
-   ```
-   → **Automatic pre-release created**: `v0.1.0-rc.5`
-
-3. **Test Pre-release**
-   - Install pre-release in VS Code
-   - Test with real users
-   - Fix bugs if needed (repeat steps 1-2)
-
-4. **Release Stable Version**
-   - Update CHANGELOG.md
-   - Run "Release Stable Version" workflow (select `minor`)
-   → **Stable release created**: `v0.2.0`
-
-### Hotfix Workflow
-
-1. **Critical Bug Found**
-   ```bash
-   git checkout -b hotfix/critical-bug
-   # Fix the bug
-   git commit -m "fix: resolve crash on file open"
-   git push origin hotfix/critical-bug
-   ```
-
-2. **Merge Hotfix**
-   ```bash
-   git checkout main
-   git merge hotfix/critical-bug
-   git push origin main
-   ```
-   → **Automatic pre-release created**: `v0.2.0-rc.1`
-
-3. **Verify and Release**
-   - Test the pre-release
-   - Run "Release Stable Version" workflow (select `patch`)
-   → **Hotfix release created**: `v0.2.1`
-
-## Troubleshooting
-
-### Pre-release Not Triggered
-
-**Check**:
-- Did you push to `main` branch?
-- Did you only modify documentation files?
-- Is the commit message a release commit (`chore: release v...`)?
-- Check Actions tab for workflow run status
-
-**Solution**:
-- Push actual code changes (not just docs)
-- Manually trigger workflow if needed
-
-### "Version Already Exists" Error
-
-**Cause**: A version with this number already exists on marketplace
-
-**Solution**:
-1. Check current marketplace version
-2. Manually bump version higher
-3. Re-run workflow
-
-### "Failed to Publish" Error
-
-**Check**:
-- Is `VSCE_PAT` secret set correctly?
-- Has the PAT expired?
-- Is the publisher account active?
-
-**Solution**:
-1. Regenerate PAT in Azure DevOps
-2. Update `VSCE_PAT` secret in GitHub
-3. Re-run workflow
-
-### Build Fails
-
-**Check**:
-- Run locally: `npm run lint` and `npm run package`
-- Check error logs in Actions tab
-
-**Solution**:
-- Fix linting/build errors
-- Push fixes (triggers new pre-release)
-
-## Best Practices
-
-1. **Test Pre-releases**: Always test automatic pre-releases before stable release
-2. **Update CHANGELOG**: Keep CHANGELOG.md updated before stable releases
-3. **Semantic Versioning**: Follow semver for version bumps
-4. **Small Iterations**: Push to `main` frequently to get pre-release feedback
-5. **Stable Milestones**: Release stable versions for major milestones only
-6. **Communication**: Announce stable releases to users
-7. **Documentation**: Update docs before stable releases
-
-## Monitoring
-
-### Check Release Status
-
-- **GitHub Actions**: https://github.com/drawmotive/vscode-drawmotive/actions
-- **GitHub Releases**: https://github.com/drawmotive/vscode-drawmotive/releases
-- **Marketplace**: https://marketplace.visualstudio.com/items?itemName=drawmotive.vscode-drawmotive
-- **Marketplace Stats**: https://marketplace.visualstudio.com/manage/publishers/drawmotive
-
-### Metrics to Track
-
-- Pre-release adoption rate
-- Stable version downloads
-- User ratings and reviews
-- Issue reports per version
-
----
-
-## Quick Reference
-
-### Commands
+1. Prepare the extension against its exact published Editor dependency and committed npm lock. Run the extension unit tests and lint.
+2. Build and package the preview VSIX once with prerelease metadata. Verify the archive and run the real VS Code host checks against those exact bytes.
+3. Retain the archive, `receipt.json`, `candidate.json`, `result.json`, and `editor.png` under `.local/release/vscode/<numeric-version>/`. The receipt must bind the extension commit, package identity, successful host checks, and SHA-256.
+4. Commit the tested extension and root gitlink/authority before publishing.
+5. Publish the retained archive with the scoped root command:
 
 ```bash
-# Package locally
-npm run vsce:package
-
-# Publish stable (manual)
-npm run vsce:publish
-
-# Publish pre-release (manual)
-npm run vsce:publish-prerelease
-
-# Version bump
-npm run version:patch|minor|major|prerelease
+npm run release:vscode:scoped -- publish
 ```
 
-### Workflows
+The command creates or verifies the immutable `vX.Y.Z-pre.N` tag, uploads the retained archive and evidence, marks the GitHub release as a prerelease, then downloads the uploaded VSIX and confirms its SHA-256. It neither rebuilds the extension nor dispatches a Marketplace publisher workflow. Existing assets must match the retained bytes; they are never overwritten.
 
-- **Auto Pre-release**: `.github/workflows/auto-prerelease.yml`
-- **Stable Release**: `.github/workflows/release.yml`
+`retain` reaches the same GitHub delivery boundary as `publish`. `verify` checks the existing tag, release identity, and downloaded archive without modifying the remote release:
 
-### Links
+```bash
+npm run release:vscode:scoped -- verify
+```
 
-- **Actions**: https://github.com/drawmotive/vscode-drawmotive/actions
-- **Releases**: https://github.com/drawmotive/vscode-drawmotive/releases
-- **Marketplace**: https://marketplace.visualstudio.com/items?itemName=drawmotive.vscode-drawmotive
+The coordinated `release:all` flow uses the same GitHub preview adapter. It confirms GitHub delivery before advancing the release journal.
+
+## Optional CI verification
+
+The manual **Verify GitHub Pre-release** workflow (`prerelease.yml`) downloads the archive and scoped receipt from an existing release. Select its `vX.Y.Z-pre.N` tag and exact VSIX filename. The workflow checks out that tag and validates its commit, release target, successful host evidence, and downloaded SHA-256. It has read-only repository permissions and cannot publish to Marketplace.
+
+## Install a preview
+
+Download the VSIX from the [GitHub releases page](https://github.com/drawmotive/vscode-drawmotive/releases) and select **Extensions: Install from VSIX...**, or run:
+
+```bash
+code --install-extension /absolute/path/to/vscode-drawmotive.vsix
+```
+
+New previews are not delivered through Marketplace automatic updates. Previously published Marketplace previews and historical GitHub tags are retained as release history.
+
+## Stable publication
+
+Prepare and verify a stable target through the root release authority. The manual **Release Stable Version** workflow (`release.yml`) runs the existing checks, packages the extension, publishes to Marketplace, and creates `vX.Y.Z` on GitHub. Only this path needs the repository's `VSCE_PAT` secret.
+
+The `vsce:publish` command requires `.release/target.json` to declare the stable channel and validates installed release inputs before calling vsce. A numeric preview package version cannot bypass that gate. There is no DrawMotive preview Marketplace publication script.
+
+For Marketplace format constraints, see [Publishing Extensions](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#pre-release-extensions).

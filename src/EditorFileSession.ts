@@ -90,7 +90,11 @@ export class EditorFileSession {
             this.lastDelivered = png;
             this.lastWritten = undefined;
         } catch (error) {
-            await this.send({ type: 'error', error: `Failed to load diagram: ${error}` });
+            // A successful retry must reach the webview even when the bytes
+            // equal the last delivered/saved file, so it can clear the error.
+            this.lastDelivered = undefined;
+            this.lastWritten = undefined;
+            await this.send({ type: 'loadFailed', error: `Failed to load diagram: ${error}` });
         }
     }
 }

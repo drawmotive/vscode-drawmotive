@@ -31,6 +31,7 @@ async function host(options = {}) {
             replacements.push(png);
             emit({ revision: `loaded-${replacements.length}` });
         },
+        clearDocument: async () => { calls.push(['clear']); emit({ revision: 'blank-' + calls.length }); },
         fitViewport: async () => { calls.push(['fit']); },
         exportSnapshot: async exportOptions => {
             calls.push(['export', exportOptions]);
@@ -63,9 +64,66 @@ test('direct SDK host declares product Save, imports complete PNG, and fits with
     assert.equal(h.config.assetBaseUrl, 'http://127.0.0.1:123/token/');
     assert.equal(h.config.ui.actions[0].id, 'host.save');
     assert.deepEqual(h.replacements, ['initial']);
-    assert.equal(h.status.textContent, 'Ready');
+    assert.equal(h.status.textContent, '');
+    assert.equal(h.status.hidden, true);
     assert.equal(h.actionStates.at(-1).enabled, true);
     assert.deepEqual(h.calls.slice(-4), [['editing', false], ['replace', 'initial'], ['fit'], ['editing', true]]);
+});
+test('zero-byte drawing opens a clean editable blank document and saves only on request', async t => {
+    const h = await host();
+    t.after(() => h.session.dispose());
+    await h.receive({ type: 'load', png: '' });
+    assert.deepEqual(h.replacements, []);
+    assert.equal(h.calls.filter(call => call[0] === 'clear').length, 1);
+    assert.equal(h.state().editingEnabled, true);
+    assert.equal(h.actionStates.at(-1).enabled, true);
+    assert.equal(h.status.hidden, true);
+    assert.equal(h.messages.some(message => ['save', 'error'].includes(message.type)), false);
+    const saving = h.config.ui.actions[0].onInvoke();
+    await tick();
+    const request = h.messages.find(message => message.type === 'save');
+    assert.equal(request.png, 'PNG-' + h.state().revision);
+    await h.receive({ type: 'saved', requestId: request.requestId, revision: request.revision });
+    await saving;
+    assert.equal(h.status.hidden, true);
+});
+test('an external truncation asks before discarding edits and clears through the SDK only after approval', async t => {
+    const h = await loadedHost(t);
+    h.emit({ revision: 'unsaved' });
+    await h.receive({ type: 'external', png: '' });
+    const decision = h.messages.find(message => message.type === 'confirmReload');
+    assert.ok(decision);
+    assert.equal(h.calls.some(call => call[0] === 'clear'), false);
+    await h.receive({ type: 'reloadDecision', requestId: decision.requestId, reload: true });
+    assert.equal(h.calls.filter(call => call[0] === 'clear').length, 1);
+    assert.equal(h.state().editingEnabled, true);
+    assert.equal(h.status.hidden, true);
+    await h.receive({ type: 'external', png: '' });
+    assert.equal(h.calls.filter(call => call[0] === 'clear').length, 1, 'Watcher echo preserves the new baseline');
+});
+test('file read errors display until a successful load, while startup errors use the host notification', async t => {
+    const h = await host();
+    t.after(() => h.session.dispose());
+    await h.receive({ type: 'loadFailed', error: 'Permission denied' });
+    assert.equal(h.status.hidden, false);
+    assert.equal(h.status.textContent, 'Permission denied');
+    await h.receive({ type: 'load', png: '' });
+    assert.equal(h.status.hidden, true);
+    const failed = await host({ startupError: true });
+    t.after(() => failed.session.dispose());
+    assert.equal(failed.status.hidden, true);
+    assert.equal(failed.messages.at(-1).error, 'Startup failed');
+});
+test('a successful read of the current file clears its load error without replacing unsaved edits', async t => {
+    const h = await loadedHost(t);
+    h.emit({ revision: 'unsaved' });
+    await h.receive({ type: 'loadFailed', error: 'Temporary read failure' });
+    assert.equal(h.status.hidden, false);
+    await h.receive({ type: 'external', png: 'initial' });
+    assert.equal(h.status.hidden, true);
+    assert.equal(h.state().revision, 'unsaved');
+    assert.deepEqual(h.replacements, ['initial']);
+    assert.equal(h.messages.some(message => message.type === 'confirmReload'), false);
 });
 
 test('Save awaits the exact acknowledgment and keeps edits after its snapshot dirty', async t => {
@@ -86,7 +144,7 @@ test('Save awaits the exact acknowledgment and keeps edits after its snapshot di
     h.emit({ revision: 'later-edit' });
     await h.receive({ type: 'saved', requestId: request.requestId, revision: request.revision });
     await saving;
-    assert.equal(h.status.textContent, 'Unsaved changes');
+    assert.equal(h.status.hidden, true);
     assert.equal(h.actionStates.at(-1).enabled, true);
     assert.equal(h.replacements.length, 1);
 });
@@ -99,12 +157,12 @@ test('successful save establishes its source, while a disk revert is a real repl
     const request = h.messages.find(message => message.type === 'save');
     await h.receive({ type: 'saved', requestId: request.requestId, revision: request.revision });
     await saving;
-    assert.equal(h.status.textContent, 'Saved');
+    assert.equal(h.status.hidden, true);
     await h.receive({ type: 'external', png: request.png });
     assert.deepEqual(h.replacements, ['initial']);
     await h.receive({ type: 'external', png: 'initial' });
     assert.deepEqual(h.replacements, ['initial', 'initial']);
-    assert.equal(h.status.textContent, 'Ready');
+    assert.equal(h.status.hidden, true);
 });
 
 test('save failure preserves dirty data and permits a new save request', async t => {
@@ -116,7 +174,8 @@ test('save failure preserves dirty data and permits a new save request', async t
     const request = h.messages.find(message => message.type === 'save');
     await h.receive({ type: 'saveFailed', requestId: request.requestId, revision: request.revision, error: 'Disk full' });
     await rejected;
-    assert.equal(h.status.textContent, 'Disk full');
+    assert.equal(h.status.hidden, true);
+    assert.equal(h.messages.some(message => message.type === 'error' && message.error === 'Disk full'), true);
     assert.equal(h.actionStates.at(-1).enabled, true);
     assert.equal(h.state().revision, 'edited');
     const retry = h.config.ui.actions[0].onInvoke();
@@ -125,7 +184,7 @@ test('save failure preserves dirty data and permits a new save request', async t
     assert.notEqual(next.requestId, request.requestId);
     await h.receive({ type: 'saved', requestId: next.requestId, revision: next.revision });
     await retry;
-    assert.equal(h.status.textContent, 'Saved');
+    assert.equal(h.status.hidden, true);
 });
 
 test('external replacement freezes dirty edits until a correlated reload decision', async t => {
@@ -147,7 +206,7 @@ test('external replacement freezes dirty edits until a correlated reload decisio
     await h.receive({ type: 'reloadDecision', requestId: next.requestId, reload: true });
     assert.deepEqual(h.replacements, ['initial', 'external-next']);
     assert.equal(h.state().editingEnabled, true);
-    assert.equal(h.status.textContent, 'Ready');
+    assert.equal(h.status.hidden, true);
 });
 
 test('invalid external PNG retains the same instance, document and editing gate', async t => {
@@ -159,8 +218,15 @@ test('invalid external PNG retains the same instance, document and editing gate'
     assert.deepEqual(h.replacements, ['initial']);
     assert.equal(h.disposed(), 0);
     assert.match(h.status.textContent, /Invalid embedded document/);
+    assert.equal(h.status.hidden, false);
+    h.emit({ revision: 'later-edit' });
+    assert.equal(h.status.hidden, false, 'Edits cannot dismiss a failed PNG load');
     await h.receive({ type: 'external', png: 'valid-next' });
+    const decision = h.messages.filter(message => message.type === 'confirmReload').at(-1);
+    await h.receive({ type: 'reloadDecision', requestId: decision.requestId, reload: true });
     assert.deepEqual(h.replacements, ['initial', 'valid-next']);
+    assert.equal(h.status.hidden, true);
+    assert.equal(h.status.textContent, '');
 });
 
 test('external updates arriving during save wait for write acknowledgment', async t => {
@@ -183,12 +249,12 @@ test('timed out replacement waits for its late result before restoring editing a
     await h.receive({ type: 'external', png: 'delayed' });
     assert.equal(h.state().editingEnabled, false);
     assert.deepEqual(h.replacements, ['initial']);
-    assert.equal(h.status.textContent, 'Loading diagram…');
+    assert.equal(h.status.hidden, true);
     finish();
     await tick();
     assert.deepEqual(h.replacements, ['initial', 'delayed']);
     assert.equal(h.state().editingEnabled, true);
-    assert.equal(h.status.textContent, 'Ready');
+    assert.equal(h.status.hidden, true);
 });
 
 test('foreign sessions cannot load or acknowledge saves', async t => {
@@ -199,7 +265,7 @@ test('foreign sessions cannot load or acknowledge saves', async t => {
     await tick();
     const request = h.messages.find(message => message.type === 'save');
     await h.receive({ type: 'saved', sessionId: 'foreign', requestId: request.requestId, revision: request.revision });
-    assert.equal(h.status.textContent, 'Saving…');
+    assert.equal(h.status.hidden, true);
     await h.receive({ type: 'saved', requestId: request.requestId, revision: request.revision });
     await saving;
 });

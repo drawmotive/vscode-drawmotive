@@ -23,15 +23,16 @@ export function editorWebviewHtml({ assetBaseUrl, scriptUrl, cspSource, sessionI
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}' ${attribute(cspSource)}; style-src 'nonce-${nonce}'; frame-src ${attribute(origin)}; object-src 'none'; base-uri 'none';">
 <title>DrawMotive</title>
 <style nonce="${nonce}">
-html, body { margin: 0; height: 100%; overflow: hidden; }
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
 body { display: flex; flex-direction: column; font-family: var(--vscode-font-family); color: var(--vscode-foreground); background: var(--vscode-editor-background); }
-#status { padding: 6px 10px; min-height: 1.4em; }
+#status { padding: 6px 10px; color: var(--vscode-errorForeground, #f14c4c); }
+#status[hidden] { display: none; }
 #editor { flex: 1; min-height: 0; }
 #editor > iframe { display: block; width: 100%; height: 100%; border: 0; }
 </style>
 </head>
 <body>
-<div id="status" role="status">${mode === 'create' ? 'Creating diagram…' : 'Loading editor…'}</div>
+<div id="status" role="alert" hidden></div>
 <div id="editor"></div>
 <script id="editor-config" type="application/json" nonce="${nonce}">${config}</script>
 <script type="module" src="${attribute(scriptUrl)}" nonce="${nonce}"></script>

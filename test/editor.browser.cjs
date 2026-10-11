@@ -13,6 +13,8 @@ test('published runtime creates, saves, and reopens complete PNG documents offli
     const host = await assets.start();
     const saved = [];
     let initialPng;
+    let expectLoadFailure = false;
+    const loadFailures = [];
     const shell = createServer(async (request, response) => {
         try {
             if (request.url.startsWith('/assets/')) {
@@ -64,7 +66,7 @@ test('published runtime creates, saves, and reopens complete PNG documents offli
             await post({ type: 'saved', requestId: message.requestId, revision: message.revision, sessionId: message.sessionId });
             // A filesystem watcher echo is not an external replacement.
             await post({ type: 'external', png: message.png, sessionId: message.sessionId });
-        } else if (message.type === 'error') errors.push(message.error);
+        } else if (message.type === 'error') (expectLoadFailure ? loadFailures : errors).push(message.error);
     });
     await page.addInitScript(() => {
         if (!['/edit', '/create'].includes(location.pathname)) return;
@@ -78,20 +80,52 @@ test('published runtime creates, saves, and reopens complete PNG documents offli
             page.waitForEvent('framenavigated', frame => frame.url().endsWith('/edit')),
             page.evaluate(() => { document.getElementById('webview').src = '/edit'; }),
         ]);
-        await webview.waitForFunction(() => document.getElementById('status').textContent === 'Ready', null, { timeout: 120000 });
-        const runtime = page.frames().find(frame => frame.parentFrame() === webview && frame.url().includes('/embed.html'));
+        const ready = async () => {
+            await waitFor(() => page.frames().some(frame => frame.parentFrame() === webview && frame.url().includes('/embed.html')));
+            const runtime = page.frames().find(frame => frame.parentFrame() === webview && frame.url().includes('/embed.html'));
+            await runtime.getByTestId('editor-action-host.save').waitFor();
+            await runtime.waitForFunction(() => !document.querySelector('[data-testid="editor-action-host.save"]').disabled, null, { timeout: 120000 });
+            assert.equal(await webview.locator('#status').isVisible(), false);
+            return runtime;
+        };
+        let runtime = await ready();
         assert.ok(runtime, 'SDK must create the direct runtime frame');
+        const bounds = await webview.evaluate(() => {
+            // Reproduce the workbench's default webview body padding before
+            // the product stylesheet; the product must own its outer bounds.
+            const style = document.querySelector('style');
+            style.textContent = 'body { padding: 0 20px; }\n' + style.textContent;
+            const rect = document.getElementById('editor').getBoundingClientRect();
+            return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, viewportWidth: innerWidth, viewportHeight: innerHeight };
+        });
+        assert.deepEqual(bounds, { x: 0, y: 0, width: bounds.viewportWidth, height: bounds.viewportHeight, viewportWidth: bounds.viewportWidth, viewportHeight: bounds.viewportHeight });
         await runtime.getByTestId('editor-action-host.save').click();
-        await webview.waitForFunction(() => document.getElementById('status').textContent === 'Saved');
+        await waitFor(() => saved.length === 1);
         assert.ok(saved[0].png.length > 0);
         initialPng = saved[0].png;
         await webview.goto(`http://127.0.0.1:${shell.address().port}/edit`);
-        await webview.waitForFunction(() => document.getElementById('status').textContent === 'Ready', null, { timeout: 120000 });
-        const reopened = page.frames().find(frame => frame.parentFrame() === webview && frame.url().includes('/embed.html'));
+        const reopened = await ready();
         await reopened.getByTestId('editor-action-host.save').click();
-        await webview.waitForFunction(() => document.getElementById('status').textContent === 'Saved');
+        await waitFor(() => saved.length === 2);
         assert.equal(saved.length, 2);
         assert.deepEqual(Buffer.from(saved[1].png, 'base64').subarray(0, 8), Buffer.from(initialPng, 'base64').subarray(0, 8));
+        initialPng = '';
+        await webview.goto(`http://127.0.0.1:${shell.address().port}/edit`);
+        runtime = await ready();
+        assert.equal(saved.length, 2, 'Opening an empty file does not write it');
+        await runtime.getByTestId('editor-action-host.save').click();
+        await waitFor(() => saved.length === 3);
+        assert.deepEqual(Buffer.from(saved[2].png, 'base64').subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+        initialPng = Buffer.from('invalid PNG').toString('base64');
+        expectLoadFailure = true;
+        await webview.goto(`http://127.0.0.1:${shell.address().port}/edit`);
+        await webview.locator('#status').waitFor({ state: 'visible', timeout: 120000 });
+        assert.ok((await webview.locator('#status').textContent()).length > 0);
+        assert.equal(await webview.locator('#status').evaluate(element => getComputedStyle(element).color), 'rgb(241, 76, 76)');
+        await waitFor(() => loadFailures.length === 1);
+        await post({ type: 'external', png: saved[2].png, sessionId: 'edit' });
+        runtime = await ready();
+        assert.equal(await runtime.getByTestId('editor-action-host.save').isEnabled(), true);
         assert.equal(errors.length, 0, errors.join(String.fromCharCode(10)));
     } catch (error) {
         error.message += ' Browser errors: ' + errors.join(String.fromCharCode(10));

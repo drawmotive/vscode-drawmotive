@@ -259,6 +259,11 @@ confirmation in real webviews. Ordinary PNG files must open in the built-in
 image editor without activating DrawMotive; `.draw.png` files must select
 DrawMotive automatically.
 
+A zero-byte `.draw.png` file opens as a blank editable canvas. Opening it does
+not write the file; **Save diagram** writes a complete PNG containing the editable
+document. The editor fills the webview without outer padding or a normal status
+bar. File and PNG load errors appear in red above the editor until a successful load.
+
 Tests download VS Code 1.101.0 by default. Set `VSCODE_VERSION` to test another
 version. Linux uses `xvfb-run` when `DISPLAY` is unset. Results and screenshots
 remain in the temporary directory printed by the command. This does not publish
@@ -273,5 +278,7 @@ npm run test:host:vsix -- /absolute/path/to/vscode-drawmotive.vsix
 
 This mode verifies the archive against the installed SDK and authored webview,
 then installs those same bytes. The printed evidence includes its SHA-256 hash.
-The manual pre-release workflow publishes a retained GitHub release archive
-with a matching receipt; it never packages a replacement at publication.
+Previews are distributed only through GitHub Releases with `vX.Y.Z-pre.N` tags.
+The manual pre-release workflow verifies the retained archive and matching
+receipt; it does not publish to Marketplace. Stable releases use Marketplace.
+See [RELEASE.md](RELEASE.md) for version mapping, publication, and VSIX installation.

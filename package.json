@@ -67,8 +67,7 @@
     "package": "npm run build",
     "lint": "eslint src",
     "vsce:package": "node .release/check.cjs --build && vsce package --no-dependencies",
-    "vsce:publish": "node .release/check.cjs --ready && vsce publish --no-dependencies",
-    "vsce:publish-prerelease": "node .release/check.cjs --ready && vsce publish --pre-release --no-dependencies",
+    "vsce:publish": "node scripts/publish-stable.cjs",
     "release:check": "node .release/check.cjs --ready",
     "assets:prepare": "node scripts/prepare-editor.cjs",
     "test": "tsc && node --test --test-concurrency=1 test/*.test.cjs",
@@ -77,7 +76,7 @@
     "build": "node .release/check.cjs --build && npm run compile -- --mode production",
     "test:host:candidate": "node scripts/test-host-candidate.mjs",
     "test:host:vsix": "node scripts/test-host-candidate.mjs --vsix",
-    "release:retained": "node scripts/publish-retained.mjs"
+    "release:verify-retained": "node scripts/verify-retained.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

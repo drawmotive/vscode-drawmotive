@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { createHash } = require('node:crypto');
 const { execFileSync } = require('node:child_process');
-const { mkdtemp, mkdir, writeFile, readFile, rm } = require('node:fs/promises');
+const { mkdtemp, mkdir, writeFile, readFile, realpath, rm } = require('node:fs/promises');
 const { tmpdir } = require('node:os');
 const path = require('node:path');
 const { publishStable } = require('../scripts/publish-stable.cjs');
@@ -72,6 +72,6 @@ test('stable publication checks release inputs and calls only the stable vsce co
     await mkdir(path.dirname(cli), { recursive: true }); await writeFile(cli, '');
     const calls = [];
     assert.equal(publishStable(f.root, { run: (command, args, options) => { calls.push({ command, args, options }); return { status: 0 }; } }), 0);
-    assert.deepEqual(calls, [{ command: process.execPath, args: [cli, 'publish', '--no-dependencies'], options: { cwd: f.root, stdio: 'inherit' } }]);
+    assert.deepEqual(calls, [{ command: process.execPath, args: [await realpath(cli), 'publish', '--no-dependencies'], options: { cwd: f.root, stdio: 'inherit' } }]);
     assert.equal(publishStable(f.root, { run: () => ({ status: 2 }) }), 2);
 });

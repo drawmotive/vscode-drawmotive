@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { mkdtemp, mkdir, writeFile, readFile, rm } = require('node:fs/promises');
+const { mkdtemp, mkdir, writeFile, readFile, realpath, rm } = require('node:fs/promises');
 const { tmpdir } = require('node:os');
 const path = require('node:path');
 const { promisify } = require('node:util');
@@ -15,7 +15,7 @@ test('candidate selection requires an explicit absolute package directory or ret
     const packageRoot = path.join(root, 'package');
     await mkdir(packageRoot);
     await writeFile(path.join(packageRoot, 'package.json'), JSON.stringify({ name: '@drawmotive/editor' }));
-    assert.equal(await candidatePackage(packageRoot, root), packageRoot);
+    assert.equal(await candidatePackage(packageRoot, root), await realpath(packageRoot));
     const archive = path.join(root, 'candidate.tgz');
     await promisify(execFile)('tar', ['-czf', archive, '-C', root, 'package']);
     const extracted = path.join(root, 'extracted');

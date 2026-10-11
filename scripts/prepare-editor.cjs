@@ -1,9 +1,10 @@
-const { mkdir, rm, copyFile, readFile, cp } = require('node:fs/promises');
+const { readFile } = require('node:fs/promises');
 const path = require('node:path');
-const { pathToFileURL } = require('node:url');
+const { stageEditor } = require('./stage-editor.cjs');
 
-/** The installed registry package owns every runtime byte; clean the staging
- * directory on every build so upgrades cannot retain obsolete local binaries. */
+/** Normal compilation consumes only the exact installed registry dependency.
+ * Candidate tests have a separate explicit command and never certify release
+ * readiness for this lockfile or leave their assets in the release directory. */
 async function prepareEditor() {
     const root = path.resolve(__dirname, '..');
     const entry = require.resolve('@drawmotive/editor');
@@ -11,21 +12,7 @@ async function prepareEditor() {
     const manifest = JSON.parse(await readFile(path.join(packageRoot, 'package.json'), 'utf8'));
     const expected = require('../package.json').dependencies['@drawmotive/editor'];
     if (manifest.version !== expected) throw new Error(`Install @drawmotive/editor@${expected} with npm ci`);
-    const { copyAssets } = await import(pathToFileURL(path.join(packageRoot, 'scripts/copy-assets.mjs')).href);
-    const destination = path.join(root, 'dist/editor');
-    // Browser checks create development bundles before release packaging.
-    // Remove the entire prior build so production cannot retain debug maps.
-    await rm(path.join(root, 'dist'), { recursive: true, force: true });
-    await mkdir(destination, { recursive: true });
-    await copyAssets(destination);
-    const webview = path.join(root, 'dist/webview');
-    await mkdir(webview, { recursive: true });
-    await copyFile(entry, path.join(webview, 'sdk.js'));
-    await copyFile(path.join(packageRoot, 'LICENSE'), path.join(destination, 'LICENSE'));
-    await cp(path.join(packageRoot, 'licenses'), path.join(destination, 'licenses'), { recursive: true });
-    for (const file of ['editor.js', 'editor-session.mjs']) {
-        await copyFile(path.join(root, 'webview', file), path.join(webview, file));
-    }
+    await stageEditor({ root, packageRoot, entry, destination: path.join(root, 'dist') });
     console.log(`Prepared @drawmotive/editor@${manifest.version}`);
 }
 

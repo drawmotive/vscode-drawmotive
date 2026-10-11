@@ -8,7 +8,8 @@ const { EditorAssetServer } = require('../out/EditorAssetServer');
 const { editorWebviewHtml } = require('../out/editorWebview');
 
 test('published runtime creates, saves, and reopens complete PNG documents offline', { timeout: 240000 }, async t => {
-    const assets = new EditorAssetServer(path.resolve('dist/editor'));
+    const assetRoot = process.env.DRAWMOTIVE_EDITOR_TEST_ASSETS ?? path.resolve('dist');
+    const assets = new EditorAssetServer(path.join(assetRoot, 'editor'));
     const host = await assets.start();
     const saved = [];
     let initialPng;
@@ -18,7 +19,7 @@ test('published runtime creates, saves, and reopens complete PNG documents offli
                 const file = path.basename(request.url);
                 if (!['editor.js', 'editor-session.mjs', 'sdk.js'].includes(file)) { response.writeHead(404).end(); return; }
                 response.writeHead(200, { 'Content-Type': 'text/javascript' });
-                response.end(await readFile(path.join('dist/webview', file)));
+                response.end(await readFile(path.join(assetRoot, 'webview', file)));
                 return;
             }
             response.writeHead(200, { 'Content-Type': 'text/html' });

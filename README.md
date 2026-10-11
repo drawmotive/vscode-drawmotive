@@ -206,6 +206,20 @@ ignored `dist/editor/`; the VSIX includes those assets for offline editing. No
 .NET build or private editor checkout is required. Upgrade the dependency and
 lockfile together, then compile again.
 
+Before registry publication, test an explicitly selected protocol-v2 Editor
+package directory or retained npm archive without changing installed packages
+or the release lockfile:
+
+```bash
+npm run test:browser:candidate -- /absolute/path/to/editor-package
+npm run test:browser:candidate -- /absolute/path/to/drawmotive-editor.tgz
+```
+
+This verifies the candidate manifest and runtime hashes, stages temporary SDK
+and runtime assets, compiles TypeScript, and runs the browser harness serially.
+It does not establish registry dependency or release readiness. Normal builds
+continue to consume the exact installed registry version.
+
 Press F5 to launch the extension. Use **Save diagram** in the editor toolbar to write
 the PNG preview and editable document back to the `.draw.png` file. The extension
 loads the public SDK directly from webview assets and serves its packaged WASM

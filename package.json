@@ -73,6 +73,7 @@
     "assets:prepare": "node scripts/prepare-editor.cjs",
     "test": "tsc && node --test --test-concurrency=1 test/*.test.cjs",
     "test:browser": "npm run compile && tsc && node --test --test-concurrency=1 test/*.browser.cjs",
+    "test:browser:candidate": "node scripts/test-browser-candidate.cjs",
     "build": "node .release/check.cjs --build && npm run compile -- --mode production"
   },
   "devDependencies": {

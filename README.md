@@ -1,284 +1,68 @@
-# Drawmotive - Diagram & Flowchart Editor for VS Code
+# DrawMotive for VS Code
 
-Create professional technical diagrams, flowcharts, and architecture visualizations directly in VS Code. Your diagrams are stored as PNG images with embedded data - perfect for documentation, version control, and collaboration.
+**Make your ideas easy to understand.**
 
-## ✨ Why Drawmotive?
+Describe a process in TextGraph. Refine it on a canvas in VS Code. Share it as an image.
 
-- **🎨 Full-Featured Diagram Editor** - Create flowcharts, UML diagrams, architecture diagrams, and more
-- **📁 Smart PNG Format** - Diagrams stored as standard PNG images with embedded editable document
-- **🔒 Offline First** - Works completely offline, no cloud required
-- **📦 Git Friendly** - Version control your diagrams alongside code
-- **🚀 Zero Setup** - No external tools, no accounts, just draw
-- **💼 Professional** - Powered by the same engine as Drawmotive web app
+[Get DrawMotive](https://github.com/drawmotive/vscode-drawmotive/releases) · [Try the text → diagram demo](https://textgraph.dev/playground#source=shopping%28info%29%3A%20Shopping%20%7B%0A%20%20browse%20-%3E%20checkout%0A%20%20browse%3A%20Browse%20the%20shop%0A%20%20checkout%3A%20Place%20an%20order%0A%7D%0A%0Aprocessing%28primary%29%3A%20Behind%20the%20scenes%20%7B%0A%20%20payment%20-%3E%20saved%20%3A%20Yes%0A%20%20payment%20-%3E%28dashed%20warning%29%20retry%20%3A%20No%0A%20%20retry%20-%3E%28dashed%20warning%29%20payment%0A%20%20saved%20-%3E%20email%0A%0A%20%20payment%28diamond%20fill%20primary%29%3A%20Payment%5Cnaccepted%3F%0A%20%20retry%28warning%29%3A%20Try%20another%5Cnpayment%0A%20%20saved%3A%20Save%20the%20order%0A%20%20email%3A%20Send%20confirmation%5Cnemail%0A%7D%0A%0Adelivery%28success%29%3A%20Delivery%20%7B%0A%20%20pack%20-%3E%20ship%20-%3E%20arrived%0A%20%20pack%3A%20Prepare%20the%20package%0A%20%20ship%3A%20Ship%20the%20package%0A%20%20arrived%28ellipse%20fill%20success%29%3A%20Package%20arrives%0A%7D%0A%0Acheckout%20-%3E%20payment%0Asaved%20-%3E%20pack%0A) · [Get the editable example](examples/online-order.draw.png)
 
-## 🎯 Perfect For
+![TextGraph source beside its actual generated diagram: an online order moves through Shopping, Behind the scenes, and Delivery, with a payment decision, a retry loop, and a confirmation email.](docs/images/online-order-demo.png)
 
-- Software architecture diagrams
-- API flow documentation
-- Database schema designs
-- System design documentation
-- Technical flowcharts
-- UML diagrams
-- Network topology diagrams
-- Process workflows
+A familiar story, a few lines of text, a diagram ready to edit. [View the full diagram](docs/images/online-order.png).
 
-## 🚀 Quick Start
+## Make it yours in a minute
 
-### Create Your First Diagram
+1. Install the latest VSIX from [Releases](https://github.com/drawmotive/vscode-drawmotive/releases) with **Extensions: Install from VSIX…**. Stable versions are also on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=drawmotive.vscode-drawmotive).
+2. Save [online-order.draw.png](examples/online-order.draw.png) to your workspace and open it in VS Code.
+3. Change **Package arrives** to **Delivered**, then click **Save diagram**.
 
-1. Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
-2. Run `Drawmotive: New Diagram`
-3. Save as `diagram.draw.png`
-4. Start drawing, then click **Save diagram** in the editor toolbar.
+Put the PNG in your README or share it with your team. Open the same file in DrawMotive whenever the story changes.
 
-### Edit Existing Diagrams
+## Start with text. Finish with your own touch.
 
-Simply click any `.draw.png` file in your workspace - it opens automatically in the Drawmotive editor.
-Ordinary `.png` files continue to use VS Code's built-in image editor. The PNG
-filter in the New Diagram save dialog does not change this file association;
-new drawing paths always end in `.draw.png`.
+[Edit this example in the TextGraph playground](https://textgraph.dev/playground#source=shopping%28info%29%3A%20Shopping%20%7B%0A%20%20browse%20-%3E%20checkout%0A%20%20browse%3A%20Browse%20the%20shop%0A%20%20checkout%3A%20Place%20an%20order%0A%7D%0A%0Aprocessing%28primary%29%3A%20Behind%20the%20scenes%20%7B%0A%20%20payment%20-%3E%20saved%20%3A%20Yes%0A%20%20payment%20-%3E%28dashed%20warning%29%20retry%20%3A%20No%0A%20%20retry%20-%3E%28dashed%20warning%29%20payment%0A%20%20saved%20-%3E%20email%0A%0A%20%20payment%28diamond%20fill%20primary%29%3A%20Payment%5Cnaccepted%3F%0A%20%20retry%28warning%29%3A%20Try%20another%5Cnpayment%0A%20%20saved%3A%20Save%20the%20order%0A%20%20email%3A%20Send%20confirmation%5Cnemail%0A%7D%0A%0Adelivery%28success%29%3A%20Delivery%20%7B%0A%20%20pack%20-%3E%20ship%20-%3E%20arrived%0A%20%20pack%3A%20Prepare%20the%20package%0A%20%20ship%3A%20Ship%20the%20package%0A%20%20arrived%28ellipse%20fill%20success%29%3A%20Package%20arrives%0A%7D%0A%0Acheckout%20-%3E%20payment%0Asaved%20-%3E%20pack%0A), or use the same source in [TextGraph Markdown Preview](https://marketplace.visualstudio.com/items?itemName=drawmotive.textgraph-markdown).
 
-## 💡 Features
+<details>
+<summary>Copy the complete TextGraph source</summary>
 
-### Smart File Format
+```textgraph
+shopping(info): Shopping {
+  browse -> checkout
+  browse: Browse the shop
+  checkout: Place an order
+}
 
-Drawmotive uses a revolutionary file format that's both a **valid PNG image** and a **full diagram**:
+processing(primary): Behind the scenes {
+  payment -> saved : Yes
+  payment ->(dashed warning) retry : No
+  retry ->(dashed warning) payment
+  saved -> email
 
-- **Share anywhere** - Works as a regular PNG in emails, Slack, GitHub, etc.
-- **Embedded data** - All diagram information stored invisibly in PNG metadata
-- **Single file** - No separate `.json` or data files to manage
-- **Version control** - Commit to Git like any other image
+  payment(diamond fill primary): Payment\naccepted?
+  retry(warning): Try another\npayment
+  saved: Save the order
+  email: Send confirmation\nemail
+}
 
-### Developer Workflow Integration
+delivery(success): Delivery {
+  pack -> ship -> arrived
+  pack: Prepare the package
+  ship: Ship the package
+  arrived(ellipse fill success): Package arrives
+}
 
-```bash
-# Works seamlessly with Git
-git add docs/architecture.draw.png
-git commit -m "Update architecture diagram"
-
-# View in any image viewer
-open diagram.draw.png
-
-# Edit in VS Code
-code diagram.draw.png
+checkout -> payment
+saved -> pack
 ```
 
-### Example Use Cases
+[Source file](examples/online-order.textgraph)
 
-**Software Teams:**
-- Document microservices architecture
-- Explain API flows in pull requests
-- Design database schemas
-- Create onboarding documentation
+</details>
 
-**Technical Writers:**
-- Illustrate complex concepts
-- Build visual tutorials
-- Create process documentation
+The downloadable drawing was generated from this source. Canvas changes are saved in the drawing; they do not rewrite the text.
 
-**Architects & Engineers:**
-- System design documents
-- Infrastructure diagrams
-- Network topology maps
+For a blank canvas, run **DrawMotive: New Diagram** and save as `your-idea.draw.png`.
 
-## 📋 Requirements
+Works offline, without an account. Requires VS Code 1.95 or newer on Windows, macOS, or Linux.
 
-- **VS Code**: Version 1.95.0 or higher
-- **Operating System**: Windows, macOS, or Linux
-- **Internet**: Not required (works offline)
-
-| Layer | Supported environment | Verification boundary |
-| --- | --- | --- |
-| Contributor build and VSIX packaging | Node.js 22; npm 10 on Linux, Windows and macOS | CI targets all three systems with Node 22 |
-| Installed editor | VS Code 1.95+ desktop on Linux, Windows or macOS | VS Code supplies the Extension Host and Chromium webview; a separate Node/npm install is not required |
-| Browser integration tests | Chromium harness using the packaged editor | This does not certify real VS Code hosts, remote tunnels, Firefox or WebKit |
-| Delivery | VSIX with the locked public editor runtime | This repository is not an npm product |
-
-The 2026-10-01 standalone audit ran Linux Node 22.23.2/npm 10.9.8 unit tests
-and compilation. Candidate integration tests also passed in the actual Linux
-VS Code 1.101.0 Extension Host with Node 22.15.1. Windows/macOS and remote
-tunnels still require verification. The embedded editor's verified browser
-boundary is Chromium; browser-only VS Code hosts are not currently verified.
-
-## 🎓 How It Works
-
-1. **Create** - Use drawing tools to create your diagram
-2. **Save** - Click **Save diagram** to export as PNG with embedded diagram data in tEXt chunk
-3. **Share** - Share the PNG file anywhere - it's a valid image
-4. **Edit** - Open the PNG in Drawmotive to continue editing
-
-The magic? Your diagram data is stored in standard PNG metadata chunks, making files portable and future-proof.
-
-## 📸 File Format Details
-
-Drawmotive uses PNG tEXt chunks to store diagram metadata:
-
-- **Standard PNG format** - Opens in any image viewer
-- **Metadata key**: `drawmotive`
-- **Encoding**: Opaque base64 editor document embedded in a tEXt chunk
-- **Compatibility**: 100% PNG spec compliant
-
-## 🤝 Integration
-
-Works great with:
-
-- **GitHub** - Preview images in README, show in PRs
-- **Confluence** - Use the [Confluence macro](https://marketplace.atlassian.com/apps/drawmotive) for deeper integration
-- **Slack/Teams** - Share as images in chat
-- **Documentation sites** - Embed as standard images
-- **Git** - Track changes, merge, and diff
-
-## 🐛 Known Issues
-
-No major known issues. Report problems at:
-https://github.com/drawmotive/vscode-drawmotive/issues
-
-## 📦 Installation
-
-### From VS Code Marketplace
-
-1. Open Extensions in VS Code (`Ctrl+Shift+X`)
-2. Search for "Drawmotive Diagram"
-3. Click Install
-
-### From VSIX File
-
-```bash
-code --install-extension vscode-drawmotive-x.x.x.vsix
-```
-
-## 🔗 Learn More
-
-- **Documentation**: https://docs.drawmotive.com
-- **Web App**: https://drawmotive.com
-- **GitHub**: https://github.com/drawmotive/vscode-drawmotive
-- **Issues**: https://github.com/drawmotive/vscode-drawmotive/issues
-
-## 📝 Release Notes
-
-### 0.1.0 - Initial Release
-
-🎉 First public release of Drawmotive for VS Code!
-
-**Features:**
-- ✅ Custom editor for `.draw.png` files
-- ✅ Full Blazor WebAssembly diagram editor
-- ✅ PNG metadata embedding and extraction
-- ✅ Command: "Drawmotive: New Diagram"
-- ✅ Offline-first architecture
-- ✅ Zero external dependencies
-
-**Supported Diagram Types:**
-- Flowcharts and process diagrams
-- Technical architecture diagrams
-- UML class diagrams
-- System design diagrams
-- Network topology
-- Custom drawings
-
-## 💬 Feedback & Support
-
-Love Drawmotive? Leave a review on the marketplace!
-
-Found a bug? Open an issue: https://github.com/drawmotive/vscode-drawmotive/issues
-
-Want a feature? Start a discussion: https://github.com/drawmotive/vscode-drawmotive/discussions
-
----
-
-**Start creating better technical documentation today! 🚀**
-
-Made with ❤️ by the Drawmotive team
-
-## Development
-
-Supports Node.js 22 with npm 10. Install the published editor and build the extension:
-
-```bash
-npm ci
-npm test
-npm run build
-npm run lint
-npm run vsce:package
-npx playwright install chromium
-npm run test:browser
-```
-
-The exact `@drawmotive/editor` version and npm registry integrity are locked in
-`package-lock.json`. Each compile verifies and stages the package runtime under
-ignored `dist/editor/`; the VSIX includes those assets for offline editing. No
-.NET build or private editor checkout is required. Upgrade the dependency and
-lockfile together, then compile again.
-
-Before registry publication, test an explicitly selected protocol-v2 Editor
-package directory or retained npm archive without changing installed packages
-or the release lockfile:
-
-```bash
-npm run test:browser:candidate -- /absolute/path/to/editor-package
-npm run test:browser:candidate -- /absolute/path/to/drawmotive-editor.tgz
-```
-
-This verifies the candidate manifest and runtime hashes, stages temporary SDK
-and runtime assets, compiles TypeScript, and runs the browser harness serially.
-It does not establish registry dependency or release readiness. Normal builds
-continue to consume the exact installed registry version.
-
-Press F5 to launch the extension. Use **Save diagram** in the editor toolbar to write
-the PNG preview and editable document back to the `.draw.png` file. The extension
-loads the public SDK directly from webview assets and serves its packaged WASM
-runtime on a temporary loopback port; VS Code resolves the runtime URL for remote
-extension hosts. PNG encoding and embedded document validation belong to that
-runtime. A successful file write confirms only the exported revision, so edits
-made during saving remain unsaved. External file changes request reload approval
-when the editor has unsaved changes. New drawings are exported by a temporary
-runtime before their file is created. Linux desktop candidate tests cover this
-workflow; Windows/macOS and remote tunnels still require verification.
-
-Release scripts still enforce `.release/target.json`; the already-published
-0.2.1 Marketplace version remains deferred until a future release is enrolled.
-
-The local VSIX command above packages without publishing. `release:check`
-and publish scripts retain eligibility checks. See
-[Contributing](CONTRIBUTING.md) and [NOTICE](NOTICE) for the public build and
-redistribution requirements.
-Vulnerability reports follow [Security reporting](SECURITY.md).
-
-### Actual VS Code Host Tests
-
-Test an explicitly selected Editor candidate in the actual VS Code workbench:
-
-```bash
-npm run test:host:candidate -- /absolute/path/to/editor-package
-npm run test:host:candidate -- /absolute/path/to/drawmotive-editor.tgz
-```
-
-The command builds and installs an isolated candidate VSIX, then verifies file
-associations, creation, editing, saving, reopening, and external-file reload
-confirmation in real webviews. Ordinary PNG files must open in the built-in
-image editor without activating DrawMotive; `.draw.png` files must select
-DrawMotive automatically.
-
-A zero-byte `.draw.png` file opens as a blank editable canvas. Opening it does
-not write the file; **Save diagram** writes a complete PNG containing the editable
-document. The editor fills the webview without outer padding or a normal status
-bar. File and PNG load errors appear in red above the editor until a successful load.
-
-Tests download VS Code 1.101.0 by default. Set `VSCODE_VERSION` to test another
-version. Linux uses `xvfb-run` when `DISPLAY` is unset. Results and screenshots
-remain in the temporary directory printed by the command. This does not publish
-the extension or change the regular `dist/` directory, locked Editor dependency,
-or sealed npm archives.
-
-For a release, build and package once, then test the exact retained archive:
-
-```bash
-npm run test:host:vsix -- /absolute/path/to/vscode-drawmotive.vsix
-```
-
-This mode verifies the archive against the installed SDK and authored webview,
-then installs those same bytes. The printed evidence includes its SHA-256 hash.
-Previews are distributed only through GitHub Releases with `vX.Y.Z-pre.N` tags.
-The manual pre-release workflow verifies the retained archive and matching
-receipt; it does not publish to Marketplace. Stable releases use Marketplace.
-See [RELEASE.md](RELEASE.md) for version mapping, publication, and VSIX installation.
+[Report an issue](https://github.com/drawmotive/vscode-drawmotive/issues) · [Development](docs/development.md) · [Contributing](CONTRIBUTING.md) · [Release notes](CHANGELOG.md)

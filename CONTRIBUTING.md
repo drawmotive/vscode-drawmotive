@@ -7,7 +7,7 @@ reproduction sequence.
 
 Contributor builds support Node.js 22 and its bundled npm on Linux, Windows
 and macOS. Installed users use VS Code's own host and webview. See the
-[support matrix](README.md) for browser and host verification limits.
+[support matrix](docs/development.md#supported-environments) for browser and host verification limits.
 
 From a standalone public checkout:
 

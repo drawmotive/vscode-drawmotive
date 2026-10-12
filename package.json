@@ -1,7 +1,7 @@
 {
   "name": "vscode-drawmotive",
   "displayName": "DrawMotive - Diagram & Flowchart Editor",
-  "description": "Create technical diagrams, flowcharts, and visual documentation with embedded PNG files. Draw offline, version control friendly.",
+  "description": "Make your ideas easy to understand. Edit diagrams in VS Code and share them as PNGs you can open and edit again.",
   "version": "0.2.7",
   "publisher": "drawmotive",
   "repository": {
@@ -70,6 +70,7 @@
     "vsce:publish": "node scripts/publish-stable.cjs",
     "release:check": "node .release/check.cjs --ready",
     "assets:prepare": "node scripts/prepare-editor.cjs",
+    "examples:render": "tsc && node scripts/render-example.mjs",
     "test": "tsc && node --test --test-concurrency=1 test/*.test.cjs",
     "test:browser": "npm run compile && tsc && node --test --test-concurrency=1 test/*.browser.cjs",
     "test:browser:candidate": "node scripts/test-browser-candidate.cjs",

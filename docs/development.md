@@ -116,7 +116,8 @@ Playwright's Chromium must be installed, as for the browser integration tests.
 
 The command reads `examples/online-order.textgraph` and uses the locked public
 Editor package to produce the editable `examples/online-order.draw.png`, the
-plain diagram preview, and the source-and-output introduction image under
+plain diagram preview, and a screenshot of the actual editing canvas under
 `docs/images/`. It reopens the editable PNG and checks that its rendered diagram
-survives before writing the assets. Keep the README's copyable source and
+survives before writing the assets. A fresh editor loads the downloadable PNG
+before the canvas screenshot is captured. Keep the README's copyable source and
 playground link in sync when changing the example.

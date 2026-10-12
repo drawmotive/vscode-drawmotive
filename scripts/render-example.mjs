@@ -24,7 +24,7 @@ let browser;
 // SDK export owns PNG metadata; reopening proves the download stays editable.
 try {
   browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const page = await browser.newPage({ viewport: { width: 1000, height: 1200 } });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.route(`${host.url}example`, route => route.fulfill({
@@ -70,42 +70,27 @@ try {
   await writeFile(path.join(root, 'examples/online-order.draw.png'), drawing);
   await writeFile(path.join(root, 'docs/images/online-order.png'), preview);
 
-  // Keep the introduction's source and output together in GitHub and Marketplace,
-  // where responsive page CSS and custom Markdown layouts are unavailable.
-  const escape = value => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-  const code = source.trimEnd().split('\n').map(line => {
-    const kind = line.includes('{') ? 'group' : line.includes('->') ? 'edge' : 'label';
-    return `<span class="${kind}">${escape(line)}</span>`;
-  }).join('\n');
-  const { displayWidth, displayHeight } = result.preview.png;
-  await page.setViewportSize({ width: 1280, height: 1260 });
-  await page.setContent(`<!doctype html><html lang="en"><meta charset="utf-8">
-    <style>
-      * { box-sizing: border-box; }
-      body { margin: 0; padding: 44px; background: #f3f6fb; color: #17263c; font-family: Arial, sans-serif; }
-      header { margin-bottom: 28px; }
-      h1 { margin: 0 0 10px; font-size: 38px; letter-spacing: -1px; }
-      header p { margin: 0; font-size: 21px; color: #53657d; }
-      main { display: grid; grid-template-columns: 1fr 475px; gap: 24px; align-items: start; }
-      section { overflow: hidden; border-radius: 16px; background: white; border: 1px solid #dfe5ee; }
-      h2 { margin: 0; padding: 20px 24px; font-size: 16px; letter-spacing: 1.5px; }
-      .source { background: #142239; border-color: #142239; color: #e6edf7; }
-      .source h2 { color: #a4b6cf; border-bottom: 1px solid #2a3a52; }
-      pre { margin: 0; padding: 28px 24px 34px; font: 16px/1.85 'DejaVu Sans Mono', monospace; white-space: pre; }
-      .group { color: #95c8ff; }
-      .edge { color: #7de2c2; }
-      .label { color: #dfe7f3; }
-      .output h2 { color: #53657d; border-bottom: 1px solid #e8edf4; }
-      img { display: block; width: ${displayWidth}px; height: ${displayHeight}px; margin: 16px auto; }
-      footer { margin-top: 18px; font-size: 16px; color: #53657d; }
-    </style>
-    <header><h1>From a few lines to a story everyone can follow.</h1><p>What happens when you place an online order?</p></header>
-    <main><section class="source"><h2>DESCRIBE IT · TEXTGRAPH</h2><pre><code>${code}</code></pre></section>
-    <section class="output"><h2>SEE IT · DRAWMOTIVE</h2><img alt="Rendered online order workflow" src="data:image/png;base64,${result.preview.png.base64}"></section></main>
-    <footer>Same source. Real output. Open the editable PNG in VS Code and make it yours.</footer>
-  </html>`);
-  await page.locator('img').evaluate(img => img.decode());
-  await page.screenshot({ path: path.join(root, 'docs/images/online-order-demo.png'), fullPage: true });
+  // Load the downloadable bytes in a fresh editor, matching the extension's
+  // toolbar and import path. Capture the actual canvas, rather than a mockup.
+  await page.reload();
+  await page.evaluate(async ({ host, png }) => {
+    const { createEditor } = await import(`${host}src/index.js`);
+    const editor = await createEditor({
+      container: document.getElementById('editor'),
+      assetBaseUrl: `${host}generated/editor/`,
+      modules: { analytics: false, authentication: false, remoteSync: false },
+      ui: { actions: [{ id: 'host.save', label: 'Save diagram', icon: 'save', onInvoke: () => {} }] },
+    });
+    await editor.replacePngDocument(png);
+    await editor.fitViewport();
+    window.exampleEditor = editor;
+  }, { host: host.url, png: result.drawing.png.base64 });
+  const runtime = page.frames().find(frame => frame.url().includes('/embed.html'));
+  await runtime.getByTestId('editor-action-host.save').waitFor();
+  await runtime.locator('canvas').first().waitFor();
+  await page.screenshot({ path: path.join(root, 'docs/images/online-order-editor.png') });
+  await page.evaluate(() => window.exampleEditor.dispose());
+  assert.equal(errors.length, 0, errors.join(String.fromCharCode(10)));
   console.log(`Rendered and reopened online-order.draw.png (${result.drawing.png.width} × ${result.drawing.png.height}); preview ${result.preview.png.width} × ${result.preview.png.height}.`);
 } finally {
   await browser?.close();

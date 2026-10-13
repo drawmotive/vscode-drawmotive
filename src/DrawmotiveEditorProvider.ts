@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { EditorAssetServer } from './EditorAssetServer';
 import { EditorFileSession } from './EditorFileSession';
 import { editorWebviewHtml } from './editorWebview';
+import { editorRuntimeDocument } from './editorRuntimeDocument';
 
 /** The readonly provider deliberately owns its explicit Save action rather
  * than adopting VS Code's native save/backup lifecycle in this integration. */
@@ -60,13 +61,26 @@ export class DrawmotiveEditorProvider implements vscode.CustomReadonlyEditorProv
         const onDispose = panel.onDidDispose(() => { disposed = true; resources.forEach(resource => resource.dispose()); });
         resources.push(onDispose);
         if (token) resources.push(token.onCancellationRequested(() => panel.dispose()));
-        const host = await this.assetServer.start();
-        const assetBaseUrl = (await vscode.env.asExternalUri(vscode.Uri.parse(host.url))).toString();
+        const assets = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview');
+        const runtime = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'editor');
+        const browser = vscode.env.uiKind === vscode.UIKind.Web;
+        let assetBaseUrl: string;
+        let runtimeDocument: string | undefined;
+        if (browser) {
+            // asExternalUri can return remote loopback unchanged in vscode.dev.
+            // Use the existing authenticated resource channel instead of a port.
+            panel.webview.options = { enableScripts: true, localResourceRoots: [assets, runtime] };
+            assetBaseUrl = panel.webview.asWebviewUri(runtime).toString() + '/';
+            const html = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(runtime, 'embed.html'));
+            runtimeDocument = editorRuntimeDocument(Buffer.from(html).toString('utf8'), assetBaseUrl, panel.webview.cspSource);
+        } else {
+            const host = await this.assetServer.start();
+            assetBaseUrl = (await vscode.env.asExternalUri(vscode.Uri.parse(host.url))).toString();
+            this.assetServer.allowForwardedOrigin(assetBaseUrl);
+            panel.webview.options = { enableScripts: true, localResourceRoots: [assets] };
+        }
         if (disposed) return;
         if (token?.isCancellationRequested) { panel.dispose(); return; }
-        this.assetServer.allowForwardedOrigin(assetBaseUrl);
-        const assets = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview');
-        panel.webview.options = { enableScripts: true, localResourceRoots: [assets] };
         const sessionId = randomUUID();
         let creationWritten = false;
         const file = new EditorFileSession(sessionId, mode, {
@@ -95,7 +109,7 @@ export class DrawmotiveEditorProvider implements vscode.CustomReadonlyEditorProv
             resources.push(watcher, watcher.onDidChange(changed), watcher.onDidCreate(changed), watcher.onDidDelete(changed));
         }
         panel.webview.html = editorWebviewHtml({
-            assetBaseUrl, sessionId, mode, cspSource: panel.webview.cspSource,
+            assetBaseUrl, runtimeDocument, sessionId, mode, cspSource: panel.webview.cspSource,
             scriptUrl: panel.webview.asWebviewUri(vscode.Uri.joinPath(assets, 'editor.js')).toString(),
         });
     }

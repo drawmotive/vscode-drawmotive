@@ -1,7 +1,7 @@
 /** The product owns file identity, save confirmation and reload decisions; the
  * public SDK owns document validation, revisions and PNG encoding. A file write
  * only establishes the baseline for its exact exported snapshot. */
-export function startEditorSession({ createEditor, vscode, container, status, assetBaseUrl, sessionId, mode = 'edit' }) {
+export function startEditorSession({ createEditor, vscode, container, status, assetBaseUrl, frameDocument, sessionId, mode = 'edit' }) {
     const controller = new AbortController();
     const pending = new Map();
     let sequence = 0;
@@ -154,7 +154,7 @@ export function startEditorSession({ createEditor, vscode, container, status, as
 
     const ready = (async () => {
         editor = await createEditor({
-            container, assetBaseUrl, signal: controller.signal,
+            container, assetBaseUrl, ...(frameDocument ? { frameDocument } : {}), signal: controller.signal,
             modules: { analytics: false, authentication: false, remoteSync: false },
             ui: { actions: mode === 'edit' ? [{ id: 'host.save', label: 'Save diagram', icon: 'save', enabled: false, onInvoke: save }] : [] },
         });

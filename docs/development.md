@@ -11,9 +11,10 @@
 
 The 2026-10-01 standalone audit ran Linux Node 22.23.2/npm 10.9.8 unit tests
 and compilation. Candidate integration tests also passed in the actual Linux
-VS Code 1.101.0 Extension Host with Node 22.15.1. Windows/macOS and remote
-tunnels still require verification. The embedded editor's verified browser
-boundary is Chromium; browser-only VS Code hosts are not currently verified.
+VS Code 1.101.0 Extension Host with Node 22.15.1. The Remote Tunnels regression
+candidate passed Chromium integration tests, an OpenVSCode Server 1.109.5 browser
+workbench check, and manual validation in vscode.dev through Remote Tunnels on
+2026-10-13. Windows/macOS, Firefox and WebKit still require verification.
 
 ## Build and package
 
@@ -52,13 +53,40 @@ continue to consume the exact installed registry version.
 Press F5 to launch the extension. Use **Save diagram** in the editor toolbar to write
 the PNG preview and editable document back to the `.draw.png` file. The extension
 loads the public SDK directly from webview assets and serves its packaged WASM
-runtime on a temporary loopback port; VS Code resolves the runtime URL for remote
-extension hosts. PNG encoding and embedded document validation belong to that
+runtime on a temporary loopback port in desktop VS Code; VS Code resolves that
+URL for remote extension hosts. Browser workbenches load the packaged runtime
+through authenticated VS Code webview resources instead. PNG encoding and
+embedded document validation belong to that
 runtime. A successful file write confirms only the exported revision, so edits
 made during saving remain unsaved. External file changes request reload approval
 when the editor has unsaved changes. New drawings are exported by a temporary
 runtime before their file is created. Linux desktop candidate tests cover this
-workflow; Windows/macOS and remote tunnels still require verification.
+workflow; Windows/macOS still require verification.
+
+### Remote Tunnels regression candidate
+
+Version 0.2.1 loaded its packaged WASM through `asWebviewUri`, which uses the
+authenticated VS Code resource service. The SDK migration replaced this with
+an HTTP iframe served by the remote Extension Host. In vscode.dev, `asExternalUri`
+can leave that loopback URL unchanged, so the browser attempts to connect to its
+own `127.0.0.1` and reports a refused connection.
+
+Browser hosts now choose the authenticated resource transport before creating
+the runtime. The SDK first loads a same-origin controlled bootstrap document,
+then writes the trusted packaged runtime HTML into it. This retains the VS Code
+resource service worker. The embedded runtime keeps its navigation URL separate
+from its asset URL because tunnel resource hostnames can contain `+`, which
+.NET URI parsing rejects. Classic scripts use CORS mode to preserve the base URL
+of their dynamic imports. Resources and document I/O remain inside VS Code; no
+third-party runtime CDN is used.
+
+The verified local candidate includes the SDK's new `frameDocument` option and
+the updated embedded runtime. The locked registry dependency
+`@drawmotive/editor@0.2.2-alpha.8` does not contain those changes. Regular builds
+therefore do not yet produce the browser fix. Publish a new Editor version and
+update the extension dependency, lockfile and release authority before releasing
+the extension. Until then, use the explicit candidate commands above to test
+the corrected runtime; the manual vscode.dev validation applies to that candidate.
 
 Release scripts still enforce `.release/target.json`; the already-published
 0.2.1 Marketplace version remains deferred until a future release is enrolled.

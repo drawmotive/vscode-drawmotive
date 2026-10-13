@@ -2,8 +2,11 @@ import { createEditor } from './sdk.js';
 import { startEditorSession } from './editor-session.mjs';
 
 const config = JSON.parse(document.getElementById('editor-config').textContent);
+// Load the current controlled webview document first to retain its service
+// worker, then let the SDK write the trusted packaged runtime into that frame.
+const frameDocument = config.runtimeDocument === undefined ? undefined : { url: window.frameElement.src, html: config.runtimeDocument };
 const session = startEditorSession({
-    ...config, createEditor, vscode: acquireVsCodeApi(),
+    ...config, frameDocument, createEditor, vscode: acquireVsCodeApi(),
     container: document.getElementById('editor'), status: document.getElementById('status'),
 });
 addEventListener('message', event => {

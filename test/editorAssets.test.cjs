@@ -59,3 +59,16 @@ test('webview loads SDK modules locally and gives only the runtime an HTTP frame
     assert.equal(escaped.includes('</script><script>alert(1)'), false);
     assert.match(escaped, /\\u003c/);
 });
+
+test('browser runtime document allows only VS Code resources and enables CORS dynamic imports', () => {
+    const { editorRuntimeDocument } = require('../out/editorRuntimeDocument');
+    const html = editorRuntimeDocument('<html><head><base href="./"></head><body><script src="_framework/blazor.webassembly.js" autostart="false"></script></body></html>', 'https://vscode-remote+tunnel-host.vscode-resource.vscode-cdn.net/editor/', 'https://*.vscode-cdn.net');
+    assert.ok(html.includes('<base href="https://vscode-remote+tunnel-host.vscode-resource.vscode-cdn.net/editor/">'));
+    assert.ok(html.includes('<script crossorigin="anonymous" src="_framework/blazor.webassembly.js" autostart="false">'));
+    assert.ok(html.includes("connect-src https://*.vscode-cdn.net data: blob:;"));
+    assert.ok(html.includes("script-src https://*.vscode-cdn.net 'wasm-unsafe-eval';"));
+    const outer = require('../out/editorWebview').editorWebviewHtml({ assetBaseUrl: 'https://assets.example/', runtimeDocument: html, scriptUrl: 'https://host.example/editor.js', cspSource: 'https://host.example', sessionId: 'browser' });
+    assert.ok(outer.includes("frame-src 'self';"));
+    const config = JSON.parse(outer.split('id="editor-config"')[1].split('</script>')[0].split('>').slice(1).join('>'));
+    assert.equal(config.runtimeDocument, html, 'Embedded runtime HTML must survive JSON escaping unchanged.');
+});

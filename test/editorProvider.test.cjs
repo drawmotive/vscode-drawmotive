@@ -6,12 +6,14 @@ const path = require('node:path');
 const vm = require('node:vm');
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
-function harness({ writeError = false } = {}) {
+function harness({ writeError = false, browser = false } = {}) {
     const panels = [];
     const reads = [];
     const writes = [];
     const commands = [];
     const errors = [];
+    let starts = 0;
+    let externalUris = 0;
     const uri = value => ({ path: value, fsPath: value, toString: () => value });
     const disposable = () => ({ dispose() {} });
     const panel = () => {
@@ -39,7 +41,8 @@ function harness({ writeError = false } = {}) {
         Uri: { parse: uri, joinPath: (value, ...parts) => uri(path.posix.join(value.path, ...parts)) },
         ViewColumn: { Active: 1 },
         RelativePattern: class {},
-        env: { asExternalUri: async value => value },
+        UIKind: { Desktop: 1, Web: 2 },
+        env: { uiKind: browser ? 2 : 1, asExternalUri: async value => { externalUris++; return value; } },
         commands: { executeCommand: async (...args) => { commands.push(args); } },
         window: {
             createWebviewPanel: () => { const result = panel(); panels.push(result); return result; },
@@ -48,7 +51,7 @@ function harness({ writeError = false } = {}) {
         },
         workspace: {
             fs: {
-                readFile: async value => { reads.push(value); return Buffer.from('full file bytes'); },
+                readFile: async value => { reads.push(value); return Buffer.from(value.path.endsWith('/embed.html') ? '<html><head><base href="./"></head><body><script src="_framework/blazor.webassembly.js"></script></body></html>' : 'full file bytes'); },
                 writeFile: async (value, bytes) => { if (writeError) throw new Error('Disk full'); writes.push({ uri: value, bytes: Buffer.from(bytes) }); },
             },
             createFileSystemWatcher: () => ({ ...disposable(), onDidChange: disposable, onDidCreate: disposable, onDidDelete: disposable }),
@@ -57,10 +60,27 @@ function harness({ writeError = false } = {}) {
     const filename = path.resolve('out/DrawmotiveEditorProvider.js');
     const realRequire = createRequire(filename);
     const exported = {};
-    vm.runInNewContext(fs.readFileSync(filename, 'utf8'), { exports: exported, require: name => name === 'vscode' ? vscode : realRequire(name), console, Error });
-    const provider = new exported.DrawmotiveEditorProvider({ extensionUri: uri('/extension'), subscriptions: [] }, { start: async () => ({ url: 'http://127.0.0.1:123/token/' }), allowForwardedOrigin() {} });
-    return { provider, panels, writes, reads, commands, errors, uri };
+    vm.runInNewContext(fs.readFileSync(filename, 'utf8'), { exports: exported, require: name => name === 'vscode' ? vscode : realRequire(name), console, Error, Buffer });
+    const provider = new exported.DrawmotiveEditorProvider({ extensionUri: uri('/extension'), subscriptions: [] }, { start: async () => { starts++; return { url: 'http://127.0.0.1:123/token/' }; }, allowForwardedOrigin() {} });
+    return { provider, panels, writes, reads, commands, errors, uri, panel, starts: () => starts, externalUris: () => externalUris };
 }
+
+test('browser Remote Tunnels use authenticated webview resources without starting or resolving a loopback server', async () => {
+    const h = harness({ browser: true });
+    const panel = h.panel();
+    const drawing = h.uri('vscode-remote://tunnel+control-plane/home/admin/example.draw.png');
+    await h.provider.resolveCustomEditor({ uri: drawing }, panel);
+    const config = JSON.parse(panel.webview.html.split('id="editor-config"')[1].split('</script>')[0].split('>').slice(1).join('>'));
+    assert.equal(h.starts(), 0);
+    assert.equal(h.externalUris(), 0);
+    assert.equal(config.assetBaseUrl, 'https://webview.example/extension/dist/editor/');
+    assert.ok(config.runtimeDocument.includes('<base href="https://webview.example/extension/dist/editor/">'));
+    assert.ok(panel.webview.html.includes("frame-src 'self';"));
+    assert.deepEqual(Array.from(panel.webview.options.localResourceRoots, value => value.path), ['/extension/dist/webview', '/extension/dist/editor']);
+    await panel.send({ type: 'ready', sessionId: panel.sessionId() });
+    assert.equal(h.reads.at(-1), drawing);
+    panel.dispose();
+});
 
 test('new drawing writes no placeholder and opens only after successful runtime creation cleanup', async () => {
     const h = harness();

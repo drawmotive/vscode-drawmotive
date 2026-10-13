@@ -6,8 +6,10 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 const { EditorAssetServer } = require('../out/EditorAssetServer');
 const { editorWebviewHtml } = require('../out/editorWebview');
+const { editorRuntimeDocument } = require('../out/editorRuntimeDocument');
 
-test('published runtime creates, saves, and reopens complete PNG documents offline', { timeout: 240000 }, async t => {
+for (const resourceTransport of [false, true]) {
+test(`runtime creates, saves, and reopens complete PNG documents using ${resourceTransport ? 'authenticated host resources' : 'loopback HTTP'} offline`, { timeout: 240000 }, async t => {
     const assetRoot = process.env.DRAWMOTIVE_EDITOR_TEST_ASSETS ?? path.resolve('dist');
     const assets = new EditorAssetServer(path.join(assetRoot, 'editor'));
     const host = await assets.start();
@@ -15,6 +17,9 @@ test('published runtime creates, saves, and reopens complete PNG documents offli
     let initialPng;
     let expectLoadFailure = false;
     const loadFailures = [];
+    const resourceOrigin = 'https://vscode-remote+tunnel-002bcontrol-002dplane.vscode-resource.vscode-cdn.net';
+    const resourceBase = resourceOrigin + '/packaged/editor/';
+    const documentHtml = resourceTransport ? editorRuntimeDocument(await readFile(path.join(assetRoot, 'editor/embed.html'), 'utf8'), resourceBase, 'https://*.vscode-cdn.net') : undefined;
     const shell = createServer(async (request, response) => {
         try {
             if (request.url.startsWith('/assets/')) {
@@ -24,11 +29,12 @@ test('published runtime creates, saves, and reopens complete PNG documents offli
                 response.end(await readFile(path.join(assetRoot, 'webview', file)));
                 return;
             }
+            if (request.url.startsWith('/bootstrap')) { response.writeHead(200, { 'Content-Type': 'text/html' }).end('<!doctype html>'); return; }
             response.writeHead(200, { 'Content-Type': 'text/html' });
             const origin = `http://127.0.0.1:${shell.address().port}`;
             const mode = request.url === '/create' ? 'create' : 'edit';
             response.end(['/edit', '/create'].includes(request.url)
-                ? editorWebviewHtml({ assetBaseUrl: host.url, scriptUrl: `${origin}/assets/editor.js`, cspSource: origin, sessionId: mode, mode })
+                ? editorWebviewHtml({ assetBaseUrl: resourceTransport ? resourceBase : host.url, runtimeDocument: documentHtml, scriptUrl: `${origin}/assets/editor.js`, cspSource: origin, sessionId: mode, mode })
                 : '<!doctype html><iframe id=webview src=/create style=width:100vw;height:100vh></iframe>');
         } catch (error) { response.writeHead(500).end(String(error)); }
     });
@@ -47,8 +53,14 @@ test('published runtime creates, saves, and reopens complete PNG documents offli
     };
     page.on('pageerror', error => errors.push(error.message));
     page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
-    await page.route('**/*', route => {
+    await page.route('**/*', async route => {
         const url = new URL(route.request().url());
+        if (resourceTransport && url.origin === resourceOrigin && url.pathname.startsWith('/packaged/editor/')) {
+            const relative = url.pathname.slice('/packaged/editor/'.length);
+            assert.ok(!relative.includes('..'));
+            const types = { '.js': 'text/javascript', '.wasm': 'application/wasm', '.css': 'text/css', '.json': 'application/json', '.html': 'text/html' };
+            return route.fulfill({ body: await readFile(path.join(assetRoot, 'editor', relative)), contentType: types[path.extname(relative)] ?? 'application/octet-stream', headers: { 'Access-Control-Allow-Origin': '*' } });
+        }
         if (url.hostname === '127.0.0.1') return route.continue();
         errors.push(`Unexpected network request: ${url.origin}`);
         return route.abort();
@@ -69,8 +81,13 @@ test('published runtime creates, saves, and reopens complete PNG documents offli
         } else if (message.type === 'error') (expectLoadFailure ? loadFailures : errors).push(message.error);
     });
     await page.addInitScript(() => {
-        if (!['/edit', '/create'].includes(location.pathname)) return;
+        if (!['/edit', '/create'].includes(location.pathname) || location.hash.startsWith('#nonce=')) return;
         window.acquireVsCodeApi = () => ({ postMessage: message => window.extensionMessage(message) });
+        // The real VS Code preloader uses a controlled bootstrap document whose
+        // src can differ from location.href after document.write.
+        const bootstrap = document.createElement('iframe');
+        bootstrap.src = '/bootstrap';
+        Object.defineProperty(window, 'frameElement', { configurable: true, get: () => bootstrap });
     });
     await page.goto(`http://127.0.0.1:${shell.address().port}`);
     try {
@@ -81,8 +98,8 @@ test('published runtime creates, saves, and reopens complete PNG documents offli
             page.evaluate(() => { document.getElementById('webview').src = '/edit'; }),
         ]);
         const ready = async () => {
-            await waitFor(() => page.frames().some(frame => frame.parentFrame() === webview && frame.url().includes('/embed.html')));
-            const runtime = page.frames().find(frame => frame.parentFrame() === webview && frame.url().includes('/embed.html'));
+            await waitFor(() => page.frames().some(frame => frame.parentFrame() === webview && frame.url().includes(resourceTransport ? '/bootstrap' : '/embed.html')));
+            const runtime = page.frames().find(frame => frame.parentFrame() === webview && frame.url().includes(resourceTransport ? '/bootstrap' : '/embed.html'));
             await runtime.getByTestId('editor-action-host.save').waitFor();
             await runtime.waitForFunction(() => !document.querySelector('[data-testid="editor-action-host.save"]').disabled, null, { timeout: 120000 });
             assert.equal(await webview.locator('#status').isVisible(), false);
@@ -132,3 +149,4 @@ test('published runtime creates, saves, and reopens complete PNG documents offli
         throw error;
     }
 });
+}

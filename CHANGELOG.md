@@ -4,6 +4,15 @@ All notable changes to the DrawMotive extension will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Restore packaged runtime loading through authenticated VS Code resources in
+  browser workbenches, including vscode.dev Remote Tunnels, where the remote
+  loopback iframe URL could report a refused connection. Release requires the
+  updated Editor SDK and embedded runtime; see [Development](docs/development.md).
+
 ## [0.1.0] - 2026-01-24
 
 ### 🎉 Initial Release

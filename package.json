@@ -77,7 +77,8 @@
     "build": "node .release/check.cjs --build && npm run compile -- --mode production",
     "test:host:candidate": "node scripts/test-host-candidate.mjs",
     "test:host:vsix": "node scripts/test-host-candidate.mjs --vsix",
-    "release:verify-retained": "node scripts/verify-retained.mjs"
+    "release:verify-retained": "node scripts/verify-retained.mjs",
+    "test:release": "node --test --test-concurrency=1 test/releasePolicy.test.cjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

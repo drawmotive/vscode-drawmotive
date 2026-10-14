@@ -14,7 +14,7 @@ async function fixture(t) {
     await mkdir(directory); await mkdir(path.join(root, '.release'));
     const save = (file, value) => writeFile(path.join(root, file), JSON.stringify(value));
     const pkg = { name: 'vscode-drawmotive', publisher: 'drawmotive', version: '0.2.7' };
-    const target = { name: pkg.name, version: pkg.version, releaseVersion: '0.2.2-alpha.8', channel: 'alpha' };
+    const target = { schemaVersion: 1, name: pkg.name, version: pkg.version, releaseVersion: '0.2.2-alpha.8', channel: 'alpha' };
     const bytes = Buffer.from('exact tested preview');
     const sha256 = createHash('sha256').update(bytes).digest('hex');
     const archive = pkg.name + '-' + pkg.version + '.vsix';
@@ -76,4 +76,23 @@ test('stable publication checks release inputs and calls only the stable vsce co
     calls[0].args[0] = await realpath(calls[0].args[0]);
     assert.deepEqual(calls, [{ command: process.execPath, args: [await realpath(cli), 'publish', '--no-dependencies'], options: { cwd: f.root, stdio: 'inherit' } }]);
     assert.equal(publishStable(f.root, { run: () => ({ status: 2 }) }), 2);
+});
+
+test('numeric retained previews use their exact version tags including even patches', async t => {
+    const f = await fixture(t);
+    const { verifyRetained } = await import('../scripts/verify-retained.mjs');
+    f.pkg.version = '0.3.2';
+    f.target = { ...f.target, schemaVersion: 2, version: f.pkg.version, releaseVersion: f.pkg.version };
+    f.evidence.receipt.version = f.pkg.version;
+    await f.save('package.json', f.pkg); await f.save('.release/target.json', f.target); await f.save('retained/receipt.json', f.evidence);
+    const options = { root: f.root, releaseTag: 'v0.3.2', archive: f.archive };
+    assert.equal((await verifyRetained(f.directory, options)).releaseTag, 'v0.3.2');
+    await assert.rejects(verifyRetained(f.directory, { ...options, releaseTag: 'v0.3.2-pre.2' }));
+    await f.save('.release/target.json', { ...f.target, version: '0.3.1' });
+    await assert.rejects(verifyRetained(f.directory, options), /one release identity/);
+});
+test('numeric preview cannot claim the stable Marketplace channel', async t => {
+    const f = await fixture(t);
+    await f.save('.release/target.json', { ...f.target, schemaVersion: 2, version: '0.3.2', releaseVersion: '0.3.2', channel: 'stable' });
+    assert.throws(() => publishStable(f.root, { run: () => assert.fail('Must not publish preview') }), /channel.version/);
 });

@@ -4,6 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { releaseChannel } from '../.release/release-version.cjs';
 
 /** CI checks downloaded preview evidence only. It cannot publish a Marketplace
  * version and does not rebuild the archive after real host verification. */
@@ -16,9 +17,12 @@ export async function verifyRetained(directory, { root = path.resolve(import.met
   assert.equal(evidence.commit, commit);
   assert.equal(pkg.name, 'vscode-drawmotive');
   assert.equal(target.name, pkg.name);
+  assert.ok([1, 2].includes(target.schemaVersion), 'Unknown release target schema');
+  const legacy = target.schemaVersion === 1;
   assert.equal(target.channel, 'alpha');
-  assert.match(target.releaseVersion, /^\d+[.]\d+[.]\d+-alpha[.]\d+$/);
-  assert.equal(releaseTag, 'v' + target.releaseVersion.replace('-alpha.', '-pre.'));
+  assert.equal(releaseChannel(target.releaseVersion, { legacy }), target.channel);
+  if (!legacy) assert.equal(target.version, target.releaseVersion, 'Numeric products share one release identity');
+  assert.equal(releaseTag, 'v' + (legacy ? target.releaseVersion.replace('-alpha.', '-pre.') : target.releaseVersion));
   assert.equal(evidence.receipt.name, pkg.name);
   assert.equal(evidence.receipt.publisher, pkg.publisher);
   assert.equal(evidence.receipt.version, pkg.version);

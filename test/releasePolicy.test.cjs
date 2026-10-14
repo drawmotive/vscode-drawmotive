@@ -6,6 +6,7 @@ const { mkdtemp, mkdir, writeFile, readFile, realpath, rm } = require('node:fs/p
 const { tmpdir } = require('node:os');
 const path = require('node:path');
 const { publishStable } = require('../scripts/publish-stable.cjs');
+const { packageArguments, packageRelease } = require('../scripts/package-release.cjs');
 
 async function fixture(t) {
     const root = await mkdtemp(path.join(tmpdir(), 'vscode-release-policy-'));
@@ -95,4 +96,23 @@ test('numeric preview cannot claim the stable Marketplace channel', async t => {
     const f = await fixture(t);
     await f.save('.release/target.json', { ...f.target, schemaVersion: 2, version: '0.3.2', releaseVersion: '0.3.2', channel: 'stable' });
     assert.throws(() => publishStable(f.root, { run: () => assert.fail('Must not publish preview') }), /channel.version/);
+});
+
+test('standalone packaging carries preview metadata for every numeric preview patch', () => {
+    for (let patch = 0; patch <= 9; patch++) {
+        const version = '0.3.' + patch;
+        assert.deepEqual(packageArguments({ schemaVersion: 2, version, releaseVersion: version, channel: patch ? 'alpha' : 'stable' }), ['package', '--no-dependencies', ...(patch ? ['--pre-release'] : [])]);
+    }
+    assert.deepEqual(packageArguments({ schemaVersion: 1, version: '0.2.9', releaseVersion: '0.2.2-alpha.9', channel: 'alpha' }), ['package', '--no-dependencies', '--pre-release']);
+});
+test('standalone packaging validates its target and invokes vsce with its selected preview flag', async t => {
+    const f = await fixture(t);
+    await writeFile(path.join(f.root, '.release/check.cjs'), "exports.checkComponent = (_root, options) => options.build ? [] : ['missing build gate'];");
+    const cli = path.join(f.root, 'node_modules/@vscode/vsce/vsce.js');
+    await mkdir(path.dirname(cli), { recursive: true }); await writeFile(cli, '');
+    const calls = [];
+    assert.equal(packageRelease(f.root, { run: (command, args) => { calls.push([command, args]); return { status: 0 }; } }), 0);
+    assert.deepEqual(calls[0][1].slice(1), ['package', '--no-dependencies', '--pre-release']);
+    await f.save('.release/target.json', { ...f.target, schemaVersion: 2 });
+    assert.throws(() => packageRelease(f.root, { run: () => assert.fail('invalid target cannot package') }), /suffixes are forbidden/);
 });

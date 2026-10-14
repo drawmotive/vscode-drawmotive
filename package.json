@@ -66,7 +66,7 @@
     "watch": "npm run assets:prepare && webpack --watch",
     "package": "npm run build",
     "lint": "eslint src",
-    "vsce:package": "node .release/check.cjs --build && vsce package --no-dependencies",
+    "vsce:package": "node scripts/package-release.cjs",
     "vsce:publish": "node scripts/publish-stable.cjs",
     "release:check": "node .release/check.cjs --ready",
     "assets:prepare": "node scripts/prepare-editor.cjs",

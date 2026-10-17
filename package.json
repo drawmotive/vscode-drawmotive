@@ -78,7 +78,8 @@
     "test:host:candidate": "node scripts/test-host-candidate.mjs",
     "test:host:vsix": "node scripts/test-host-candidate.mjs --vsix",
     "release:verify-retained": "node scripts/verify-retained.mjs",
-    "test:release": "node --test --test-concurrency=1 test/releasePolicy.test.cjs"
+    "test:release": "node --test --test-concurrency=1 test/releasePolicy.test.cjs",
+    "examples:capture": "node scripts/test-host-candidate.mjs --capture"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

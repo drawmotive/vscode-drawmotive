@@ -140,14 +140,34 @@ See [RELEASE.md](../RELEASE.md) for version mapping, publication, and VSIX insta
 
 ## Regenerate the introduction example
 
-After `npm ci`, run `npm run examples:render` from this package. In the parent
-DrawMotive workspace, use `npm run component -- vscode-editor examples:render`.
-Playwright's Chromium must be installed, as for the browser integration tests.
+From the parent workspace, run these operations serially:
 
-The command reads `examples/online-order.textgraph` and uses the locked public
-Editor package to produce the editable `examples/online-order.draw.png`, the
-plain diagram preview, and a screenshot of the actual editing canvas under
-`docs/images/`. It reopens the editable PNG and checks that its rendered diagram
-survives before writing the assets. A fresh editor loads the downloadable PNG
-before the canvas screenshot is captured. Keep the README's copyable source and
-playground link in sync when changing the example.
+```bash
+npm run component -- vscode-editor examples:render
+npm run component -- vscode-editor examples:capture
+npm run docs:previews -- sync
+npm run docs:previews -- check
+```
+
+Rendering uses the locked public Editor, exports the plain and editable PNGs,
+and verifies identical rendering after reopening the editable PNG. The adjacent
+render record binds both PNGs to the source and locked Editor version; capture
+rejects stale source or PNG bytes before opening the document. Rendering does not
+produce a screenshot. Capture installs an isolated VSIX through the existing
+host launcher, opens the canonical editable PNG, and captures the actual VS Code
+workbench with title bar, activity bar, sidebar, tabs and status bar visible.
+The isolated capture profile selects DrawMotive for editable PNGs and seeds
+1600 × 1200 window bounds, preventing first-open prompts from covering the canvas.
+It records the host version, image dimensions and source/pixel hashes next to
+the image. Inspect the full screenshot before accepting it.
+
+Capture requires desktop VS Code 1.101.0 (downloaded by default), Playwright,
+and a desktop display or Linux Xvfb. Set VSCODE_EXECUTABLE to an existing desktop
+executable for offline use; VSCODE_VERSION selects the download version.
+If a long download is interrupted, the parent operation
+`npm run docs:capture -- vscode:prepare` resumes the pinned Linux x64 archive
+and verifies Microsoft's SHA-256 before extraction. Set VSCODE_EXECUTABLE to
+the printed path for the capture operation.
+Profiles and workspaces are isolated; Linux captures always use a fresh Xvfb
+display with abstract sockets and no TCP listener. Missing prerequisites fail explicitly;
+never replace the workbench with a browser harness.

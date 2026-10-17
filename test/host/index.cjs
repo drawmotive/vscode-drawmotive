@@ -18,6 +18,35 @@ exports.run = async function () {
         browser = await retry(() => chromium.connectOverCDP(process.env.DRAWMOTIVE_HOST_CDP), 20000);
         const page = browser.contexts().flatMap(context => context.pages()).find(page => page.url().includes('workbench'));
         assert.ok(page, 'Actual VS Code workbench must expose CDP');
+        if (process.env.DRAWMOTIVE_EXAMPLE_CAPTURE) {
+            await page.waitForFunction(() => innerWidth >= 1599 && innerHeight >= 1199);
+            const root = process.env.DRAWMOTIVE_EXAMPLE_CAPTURE;
+            const example = vscode.Uri.file(path.join(process.env.DRAWMOTIVE_HOST_WORKSPACE, 'online-order.draw.png'));
+            await vscode.commands.executeCommand('vscode.open', example);
+            const webview = await findWebview(browser);
+            await ready(webview);
+            const runtime = await findRuntime(webview);
+            await runtime.locator('canvas').first().waitFor();
+            // Top-level workbench supplies actual host context; never crop to the webview.
+            for (const selector of ['.part.titlebar', '.part.activitybar', '.part.sidebar', '.part.statusbar', '.tabs-container']) {
+                await page.locator(selector).first().waitFor({ state: 'visible' });
+            }
+            const image = path.join(root, 'docs/images/online-order-editor.png');
+            const bytes = await page.screenshot({ path: image });
+            const { createHash } = require('node:crypto');
+            const rendered = JSON.parse(await fs.readFile(path.join(root, 'examples/online-order.render.json'), 'utf8'));
+            const bounds = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+            await fs.writeFile(image.replace('.png', '.capture.json'), JSON.stringify({
+                application: 'Visual Studio Code', version: vscode.version,
+                extension: extension.packageJSON.version, editor: rendered.editor, ...bounds,
+                sha256: createHash('sha256').update(bytes).digest('hex'),
+                sourceSha256: createHash('sha256').update(await fs.readFile(path.join(root, 'examples/online-order.textgraph'))).digest('hex'), source: 'online-order.textgraph',
+                drawingSha256: createHash('sha256').update(await fs.readFile(example.fsPath)).digest('hex'),
+            }, null, 2) + '\n');
+            evidence.checks.push('canonical editable PNG inside actual VS Code workbench');
+            await fs.writeFile(path.join(artifacts, 'result.json'), JSON.stringify(evidence, null, 2));
+            return;
+        }
         const ordinary = vscode.Uri.file(path.join(process.env.DRAWMOTIVE_HOST_WORKSPACE, 'ordinary.png'));
         await vscode.workspace.fs.writeFile(ordinary, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64'));
         await vscode.commands.executeCommand('vscode.open', ordinary);

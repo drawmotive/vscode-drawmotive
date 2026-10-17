@@ -1,3 +1,4 @@
+import { inflateSync } from 'node:zlib';
 import assert from 'node:assert/strict';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -5,16 +6,21 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 
 const require = createRequire(import.meta.url);
+const { hash } = require('./example-evidence.cjs');
 const { EditorAssetServer } = require('../out/EditorAssetServer.js');
 const root = path.resolve(import.meta.dirname, '..');
 const packageRoot = path.resolve(path.dirname(require.resolve('@drawmotive/editor')), '..');
 const source = await readFile(path.join(root, 'examples/online-order.textgraph'), 'utf8');
 const readme = await readFile(path.join(root, 'README.md'), 'utf8');
 assert.equal(readme.match(/```textgraph\n([\s\S]*?)```/)?.[1], source, 'README source must match the example');
-const playgroundLinks = [...readme.matchAll(/https:\/\/textgraph\.dev\/playground#source=([^)]*)/g)];
+// Validate the Playground's versioned query protocol at the link producer.
+const playgroundLinks = [...readme.matchAll(/https:\/\/textgraph\.dev\/playground[^)\s]*/g)];
 assert.ok(playgroundLinks.length > 0, 'README must link to the playable example');
-for (const [, encoded] of playgroundLinks) {
-  assert.equal(decodeURIComponent(encoded), source, 'Playground links must open the same example');
+for (const [link] of playgroundLinks) {
+  const encoded = new URL(link).searchParams.get('d');
+  assert.match(encoded ?? '', /^[01]\./, 'Examples must use versioned source links');
+  const bytes = Buffer.from(encoded.slice(2), 'base64url');
+  assert.equal((encoded[0] === '1' ? inflateSync(bytes) : bytes).toString('utf8'), source, 'Playground links must open the same example');
 }
 const assets = new EditorAssetServer(packageRoot);
 const host = await assets.start();
@@ -69,28 +75,12 @@ try {
   await mkdir(path.join(root, 'docs/images'), { recursive: true });
   await writeFile(path.join(root, 'examples/online-order.draw.png'), drawing);
   await writeFile(path.join(root, 'docs/images/online-order.png'), preview);
+  const sdk = JSON.parse(await readFile(path.join(packageRoot, 'package.json'), 'utf8'));
+  await writeFile(path.join(root, 'examples/online-order.render.json'), JSON.stringify({
+    editor: sdk.version, sourceSha256: hash(source), drawingSha256: hash(drawing), previewSha256: hash(preview),
+  }, null, 2) + '\n');
 
-  // Load the downloadable bytes in a fresh editor, matching the extension's
-  // toolbar and import path. Capture the actual canvas, rather than a mockup.
-  await page.reload();
-  await page.evaluate(async ({ host, png }) => {
-    const { createEditor } = await import(`${host}src/index.js`);
-    const editor = await createEditor({
-      container: document.getElementById('editor'),
-      assetBaseUrl: `${host}generated/editor/`,
-      modules: { analytics: false, authentication: false, remoteSync: false },
-      ui: { actions: [{ id: 'host.save', label: 'Save diagram', icon: 'save', onInvoke: () => {} }] },
-    });
-    await editor.replacePngDocument(png);
-    await editor.fitViewport();
-    window.exampleEditor = editor;
-  }, { host: host.url, png: result.drawing.png.base64 });
-  const runtime = page.frames().find(frame => frame.url().includes('/embed.html'));
-  await runtime.getByTestId('editor-action-host.save').waitFor();
-  await runtime.locator('canvas').first().waitFor();
-  await page.screenshot({ path: path.join(root, 'docs/images/online-order-editor.png') });
-  await page.evaluate(() => window.exampleEditor.dispose());
-  assert.equal(errors.length, 0, errors.join(String.fromCharCode(10)));
+  // Capture application context separately in the actual VS Code host.
   console.log(`Rendered and reopened online-order.draw.png (${result.drawing.png.width} × ${result.drawing.png.height}); preview ${result.preview.png.width} × ${result.preview.png.height}.`);
 } finally {
   await browser?.close();

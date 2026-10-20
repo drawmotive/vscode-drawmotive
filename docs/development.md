@@ -65,7 +65,7 @@ when the editor has unsaved changes. New drawings are exported by a temporary
 runtime before their file is created. Linux desktop candidate tests cover this
 workflow; Windows/macOS still require verification.
 
-### Remote Tunnels regression candidate
+### Remote Tunnels transport
 
 Version 0.2.1 loaded its packaged WASM through `asWebviewUri`, which uses the
 authenticated VS Code resource service. The SDK migration replaced this with
@@ -82,16 +82,15 @@ from its asset URL because tunnel resource hostnames can contain `+`, which
 of their dynamic imports. Resources and document I/O remain inside VS Code; no
 third-party runtime CDN is used.
 
-The verified local candidate includes the SDK's new `frameDocument` option and
-the updated embedded runtime. The locked registry dependency
-`@drawmotive/editor@0.2.2-alpha.8` does not contain those changes. Regular builds
-therefore do not yet produce the browser fix. Publish a new Editor version and
-update the extension dependency, lockfile and release authority before releasing
-the extension. Until then, use the explicit candidate commands above to test
-the corrected runtime; the manual vscode.dev validation applies to that candidate.
+The locked registry dependency `@drawmotive/editor@0.3.0` includes the
+`frameDocument` option and updated embedded runtime. Regular builds now bundle
+the corrected runtime. The stable `0.3.0` VSIX was verified against its exact
+retained bytes in the Linux VS Code host. The earlier manual vscode.dev
+validation described above applies to the regression candidate; it is not a
+separate manual certification of every published release.
 
-Release scripts still enforce `.release/target.json`; the already-published
-0.2.1 Marketplace version remains deferred until a future release is enrolled.
+Release scripts enforce `.release/target.json`; the extension and bundled
+Editor SDK now share the published stable `0.3.0` identity.
 
 The local VSIX command above packages without publishing. `release:check`
 and publish scripts retain eligibility checks. See
@@ -133,7 +132,7 @@ npm run test:host:vsix -- /absolute/path/to/vscode-drawmotive.vsix
 
 This mode verifies the archive against the installed SDK and authored webview,
 then installs those same bytes. The printed evidence includes its SHA-256 hash.
-Previews are distributed only through GitHub Releases with `vX.Y.Z-pre.N` tags.
+Previews are distributed only through GitHub Releases with numeric `vX.Y.Z` tags.
 The manual pre-release workflow verifies the retained archive and matching
 receipt; it does not publish to Marketplace. Stable releases use Marketplace.
 See [RELEASE.md](../RELEASE.md) for version mapping, publication, and VSIX installation.

@@ -1,12 +1,12 @@
 {
   "application": "Visual Studio Code",
   "version": "1.101.0",
-  "extension": "0.2.9",
-  "editor": "0.2.2-alpha.9",
+  "extension": "0.3.0",
+  "editor": "0.3.0",
   "width": 1599,
   "height": 1199,
-  "sha256": "16c1731921086658cbbdb566df9567d247e27a28e163c8d614ef5221759d5031",
-  "sourceSha256": "a29f2ab9e5afe748c2af3eb24ae576ff73793280f02e3fd552ffd5f233a5c62a",
+  "sha256": "995a5af87832a091143cdad5d90c02aeb9d46320582738b327673aad252f2930",
+  "sourceSha256": "58a7f563a99975f36e94ac6d18c2a4d8ee5fbb5294791890a2204e707d4043fe",
   "source": "online-order.textgraph",
-  "drawingSha256": "eddcb6cacfa0a8266b0794c9dd3ed8e79b6b511b3ba242da44ac0b229b5b7380"
+  "drawingSha256": "c460caad7507daa3d0de81599cbc633d74240ec30bfaa377339819e428368e11"
 }

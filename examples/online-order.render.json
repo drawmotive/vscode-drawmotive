@@ -1,6 +1,6 @@
 {
-  "editor": "0.2.2-alpha.9",
-  "sourceSha256": "a29f2ab9e5afe748c2af3eb24ae576ff73793280f02e3fd552ffd5f233a5c62a",
-  "drawingSha256": "eddcb6cacfa0a8266b0794c9dd3ed8e79b6b511b3ba242da44ac0b229b5b7380",
-  "previewSha256": "689241d92b32d27dbaa134989771857734f897a9f4837ad18651a24ce1387d74"
+  "editor": "0.3.0",
+  "sourceSha256": "a424964e34c88bb5f81feb46a3abd63b0ae55781eec78d1fcad6605d1f6a4bef",
+  "drawingSha256": "a2883caaf7fb76ed21864cf3f9cf40b3892f169b15287ed23e72c03772f6521a",
+  "previewSha256": "3165b9b3da9747eb94919e541bb6f2731ebe855f086e7ae059eddb1d1ce133ec"
 }

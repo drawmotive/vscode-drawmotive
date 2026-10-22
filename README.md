@@ -4,7 +4,7 @@
 
 Describe a process in TextGraph. Refine it on a canvas in VS Code. Share it as an image.
 
-[Get DrawMotive](https://github.com/drawmotive/vscode-drawmotive/releases) · [Try the text → diagram demo](https://textgraph.dev/playground?d=0.c2hvcHBpbmcoaW5mbyk6IFNob3BwaW5nIHsKICBicm93c2UgLT4gY2hlY2tvdXQKfQoKcHJvY2Vzc2luZyhwcmltYXJ5KTogQmVoaW5kIHRoZSBzY2VuZXMgewogIHBheW1lbnQgLT4gc2F2ZWQgOiBZZXMKICBwYXltZW50IC0-KGRhc2hlZCB3YXJuaW5nKSByZXRyeSA6IE5vCiAgcmV0cnkgLT4oZGFzaGVkIHdhcm5pbmcpIHBheW1lbnQKICBzYXZlZCAtPiBlbWFpbAp9CgpkZWxpdmVyeShzdWNjZXNzKTogRGVsaXZlcnkgewogIHBhY2sgLT4gc2hpcCAtPiBhcnJpdmVkCn0KCmNoZWNrb3V0IC0-IHBheW1lbnQKc2F2ZWQgLT4gcGFjawoKYnJvd3NlOiBCcm93c2UgdGhlIHNob3AKY2hlY2tvdXQ6IFBsYWNlIGFuIG9yZGVyCnBheW1lbnQoZGlhbW9uZCBmaWxsIHByaW1hcnkpOiBQYXltZW50XG5hY2NlcHRlZD8KcmV0cnkod2FybmluZyk6IFRyeSBhbm90aGVyXG5wYXltZW50CnNhdmVkOiBTYXZlIHRoZSBvcmRlcgplbWFpbDogU2VuZCBjb25maXJtYXRpb25cbmVtYWlsCnBhY2s6IFByZXBhcmUgdGhlIHBhY2thZ2UKc2hpcDogU2hpcCB0aGUgcGFja2FnZQphcnJpdmVkKGVsbGlwc2UgZmlsbCBzdWNjZXNzKTogUGFja2FnZSBhcnJpdmVzCg) · [Get the editable example](examples/online-order.draw.png)
+[Get DrawMotive](https://github.com/drawmotive/vscode-drawmotive/releases) · [Try the text → diagram demo](https://textgraph.dev/playground?d=1.eJxNj71uwzAQg_d7Co4y0LyAhmToz1gE6NRRkC71obIkSHILp-i7F5KduNuB4H0k1RizXGOoxg9EdmT7GeeqUpbJ5GXQeNwk_BAQs-OMwxHJLBOHSrhdOByVM2Vkh2-Tg4SPYXNrvMYHZK55oV-iy-wv4n37UWW2lksZNF52tQeVUVLLcezlizM7Angy4htij1x9Gu9c_qvducnUW2icvbG8VrpZlRMzxeDQorFPPhtxJ2pojbcWsH51qsZzh2e2LKnSvaBi7yUVXmH7sqf7gj9nDXvi) · [Get the editable example](examples/online-order.draw.png)
 
 ![The online-order example open on the DrawMotive editing canvas, with drawing tools, zoom controls, and Save diagram.](docs/images/online-order-editor.png)
 
@@ -14,49 +14,42 @@ A familiar story, ready to make your own. [View the full diagram](docs/images/on
 
 1. Install the latest VSIX from [Releases](https://github.com/drawmotive/vscode-drawmotive/releases) with **Extensions: Install from VSIX…**. Stable versions are also on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=drawmotive.vscode-drawmotive).
 2. Save [online-order.draw.png](examples/online-order.draw.png) to your workspace and open it in VS Code.
-3. Change **Package arrives** to **Delivered**, then click **Save diagram**.
+3. Change **Delivered** to **At your door**, then click **Save diagram**.
 
 Put the PNG in your README or share it with your team. Open the same file in DrawMotive whenever the story changes.
 
 ## Start with text. Finish with your own touch.
 
-[Edit this example in the TextGraph playground](https://textgraph.dev/playground?d=0.c2hvcHBpbmcoaW5mbyk6IFNob3BwaW5nIHsKICBicm93c2UgLT4gY2hlY2tvdXQKfQoKcHJvY2Vzc2luZyhwcmltYXJ5KTogQmVoaW5kIHRoZSBzY2VuZXMgewogIHBheW1lbnQgLT4gc2F2ZWQgOiBZZXMKICBwYXltZW50IC0-KGRhc2hlZCB3YXJuaW5nKSByZXRyeSA6IE5vCiAgcmV0cnkgLT4oZGFzaGVkIHdhcm5pbmcpIHBheW1lbnQKICBzYXZlZCAtPiBlbWFpbAp9CgpkZWxpdmVyeShzdWNjZXNzKTogRGVsaXZlcnkgewogIHBhY2sgLT4gc2hpcCAtPiBhcnJpdmVkCn0KCmNoZWNrb3V0IC0-IHBheW1lbnQKc2F2ZWQgLT4gcGFjawoKYnJvd3NlOiBCcm93c2UgdGhlIHNob3AKY2hlY2tvdXQ6IFBsYWNlIGFuIG9yZGVyCnBheW1lbnQoZGlhbW9uZCBmaWxsIHByaW1hcnkpOiBQYXltZW50XG5hY2NlcHRlZD8KcmV0cnkod2FybmluZyk6IFRyeSBhbm90aGVyXG5wYXltZW50CnNhdmVkOiBTYXZlIHRoZSBvcmRlcgplbWFpbDogU2VuZCBjb25maXJtYXRpb25cbmVtYWlsCnBhY2s6IFByZXBhcmUgdGhlIHBhY2thZ2UKc2hpcDogU2hpcCB0aGUgcGFja2FnZQphcnJpdmVkKGVsbGlwc2UgZmlsbCBzdWNjZXNzKTogUGFja2FnZSBhcnJpdmVzCg), or use the same source in [TextGraph Markdown Preview](https://marketplace.visualstudio.com/items?itemName=drawmotive.textgraph-markdown).
+[Edit this example in the TextGraph playground](https://textgraph.dev/playground?d=1.eJxNj71uwzAQg_d7Co4y0LyAhmToz1gE6NRRkC71obIkSHILp-i7F5KduNuB4H0k1RizXGOoxg9EdmT7GeeqUpbJ5GXQeNwk_BAQs-OMwxHJLBOHSrhdOByVM2Vkh2-Tg4SPYXNrvMYHZK55oV-iy-wv4n37UWW2lksZNF52tQeVUVLLcezlizM7Angy4htij1x9Gu9c_qvducnUW2icvbG8VrpZlRMzxeDQorFPPhtxJ2pojbcWsH51qsZzh2e2LKnSvaBi7yUVXmH7sqf7gj9nDXvi), or use the same source in [TextGraph Markdown Preview](https://marketplace.visualstudio.com/items?itemName=drawmotive.textgraph-markdown).
 
 <!-- public-preview:start -->
 
 ```textgraph
-shopping(info): Shopping {
-  browse -> checkout
+(horizontal)
+
+checkout(primary): Checkout {
+  order -> payment
+  payment ->(dashed warning) order : No, retry
 }
 
-processing(primary): Behind the scenes {
-  payment -> saved : Yes
-  payment ->(dashed warning) retry : No
-  retry ->(dashed warning) payment
-  saved -> email
+fulfillment(success): Fulfillment {
+  ship -> delivered
+  email
 }
 
-delivery(success): Delivery {
-  pack -> ship -> arrived
-}
+payment -> ship : Yes
+payment -> email : Yes
 
-checkout -> payment
-saved -> pack
-
-browse: Browse the shop
-checkout: Place an order
-payment(diamond fill primary): Payment\naccepted?
-retry(warning): Try another\npayment
-saved: Save the order
-email: Send confirmation\nemail
-pack: Prepare the package
-ship: Ship the package
-arrived(ellipse fill success): Package arrives
+order: Place order
+payment(diamond fill primary): Paid?
+ship: Ship order
+email: Email receipt
+delivered(ellipse fill success): Delivered
 ```
 
-![Online order: shopping, a payment decision and retry, confirmation, and delivery.](docs/images/online-order.png)
+![Online order: checkout and fulfillment, with a payment decision, a dashed retry loop, and parallel shipping and email receipt branches.](docs/images/online-order.png)
 
-[Open the full diagram](docs/images/online-order.png) · [Copy the source](examples/online-order.textgraph) · [Try this diagram](https://textgraph.dev/playground?d=1.eJxtkcFqwzAQRO_6ij3ah_yADimEnksgvRRy2UqbaIm9EivHwZT-e5GlJAR6MlppZmeec4gpsZw7llPsLRzaGX4MwLfGWybYbMEFcpd4ncyvMUmjo5yLKCmPqEtvYUeBxcMUCLIjobwaJFxGkqk4ZJzJg4Uvyi8XncccyMMNVVjOPShNuoCFj2igHf551QwMNOPNFmhEHkpATwPPpEuXr64k7S28t1FL5S5rpMCpfFGVZ_JFeu9ZxvcVjwVFZ0yFYmFX4ayNQ0wPqYX9gI4ABaJ6UtN8Os84RvFw4mGAJ7l9vT4KOkdpIv9m1tbdvauFT10AJU6B9CgvsSwccK4h6rIVgoUDiQcX5cQ64sRRjlLxlA4W9koJterKBM9kCo3y_zm9jBucjoaBU6aa_gl2X581htn8AYyRzTM)
+[Open the full diagram](docs/images/online-order.png) · [Copy the source](examples/online-order.textgraph) · [Try this diagram](https://textgraph.dev/playground?d=1.eJxNj71uwzAQg_d7Co4y0LyAhmToz1gE6NRRkC71obIkSHILp-i7F5KduNuB4H0k1RizXGOoxg9EdmT7GeeqUpbJ5GXQeNwk_BAQs-OMwxHJLBOHSrhdOByVM2Vkh2-Tg4SPYXNrvMYHZK55oV-iy-wv4n37UWW2lksZNF52tQeVUVLLcezlizM7Angy4htij1x9Gu9c_qvducnUW2icvbG8VrpZlRMzxeDQorFPPhtxJ2pojbcWsH51qsZzh2e2LKnSvaBi7yUVXmH7sqf7gj9nDXvi)
 
 <!-- public-preview:end -->
 

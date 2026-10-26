@@ -65,9 +65,10 @@ test('Marketplace publication rejects a numeric preview before loading checks or
     assert.throws(() => publishStable(f.root, { run: () => assert.fail('Must not execute a preview publisher') }), /only through GitHub/);
 });
 
-test('stable publication checks release inputs and calls only the stable vsce command', async t => {
+test('stable patch publication checks release inputs and calls only the stable vsce command', async t => {
     const f = await fixture(t);
-    await f.save('.release/target.json', { ...f.target, channel: 'stable', releaseVersion: f.pkg.version });
+    f.pkg.version = '0.3.1'; await f.save('package.json', f.pkg);
+    await f.save('.release/target.json', { ...f.target, schemaVersion: 2, version: f.pkg.version, channel: 'stable', releaseVersion: f.pkg.version });
     await writeFile(path.join(f.root, '.release/check.cjs'), "exports.checkComponent = (_root, options) => options.ready && options.installed ? [] : ['missing gate'];");
     const cli = path.join(f.root, 'node_modules/@vscode/vsce/vsce.js');
     await mkdir(path.dirname(cli), { recursive: true }); await writeFile(cli, '');
@@ -94,8 +95,8 @@ test('numeric retained previews use their exact version tags including even patc
 });
 test('numeric preview cannot claim the stable Marketplace channel', async t => {
     const f = await fixture(t);
-    await f.save('.release/target.json', { ...f.target, schemaVersion: 2, version: '0.3.2', releaseVersion: '0.3.2', channel: 'stable' });
-    assert.throws(() => publishStable(f.root, { run: () => assert.fail('Must not publish preview') }), /channel.version/);
+    await f.save('.release/target.json', { ...f.target, schemaVersion: 2, version: '0.3.2', releaseVersion: '0.3.2', channel: 'alpha' });
+    assert.throws(() => publishStable(f.root, { run: () => assert.fail('Must not publish preview') }), /only through GitHub/);
 });
 
 test('standalone packaging carries preview metadata for every numeric preview patch', () => {

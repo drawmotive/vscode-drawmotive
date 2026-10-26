@@ -1,11 +1,11 @@
 {
   "schemaVersion": 2,
-  "releaseVersion": "0.3.0",
+  "releaseVersion": "0.3.1",
   "channel": "stable",
   "name": "vscode-drawmotive",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "dependencies": {
-    "@drawmotive/editor": "0.3.0"
+    "@drawmotive/editor": "0.3.1"
   },
   "native": false,
   "publishable": true

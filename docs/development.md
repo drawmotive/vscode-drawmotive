@@ -1,6 +1,6 @@
 # Development and verification
 
-New releases use one numeric version for the Editor package and VSIX. Patch `0` is stable; patches `1` through `9` are GitHub previews tagged `vX.Y.Z`. The packaging command sets preview metadata for every preview patch. Historical suffixed tags and VSIX versions remain available for receipt verification.
+New releases use one canonical numeric version for the Editor package and VSIX. Every numeric version is stable and packages without preview metadata. Historical suffixed tags and VSIX versions remain available for receipt verification.
 
 ## Supported environments
 

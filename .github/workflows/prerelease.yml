@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Numeric GitHub preview tag vX.Y.Z (patch 1-9; legacy tags support retries)
+        description: Historical GitHub prerelease tag for retained archive verification
         required: true
       archive:
         description: Retained VSIX filename

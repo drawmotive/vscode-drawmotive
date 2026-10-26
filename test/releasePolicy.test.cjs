@@ -80,29 +80,22 @@ test('stable patch publication checks release inputs and calls only the stable v
     assert.equal(publishStable(f.root, { run: () => ({ status: 2 }) }), 2);
 });
 
-test('numeric retained previews use their exact version tags including even patches', async t => {
+test('numeric stable versions cannot enter retained GitHub preview verification', async t => {
     const f = await fixture(t);
     const { verifyRetained } = await import('../scripts/verify-retained.mjs');
-    f.pkg.version = '0.3.2';
-    f.target = { ...f.target, schemaVersion: 2, version: f.pkg.version, releaseVersion: f.pkg.version };
-    f.evidence.receipt.version = f.pkg.version;
-    await f.save('package.json', f.pkg); await f.save('.release/target.json', f.target); await f.save('retained/receipt.json', f.evidence);
-    const options = { root: f.root, releaseTag: 'v0.3.2', archive: f.archive };
-    assert.equal((await verifyRetained(f.directory, options)).releaseTag, 'v0.3.2');
-    await assert.rejects(verifyRetained(f.directory, { ...options, releaseTag: 'v0.3.2-pre.2' }));
-    await f.save('.release/target.json', { ...f.target, version: '0.3.1' });
-    await assert.rejects(verifyRetained(f.directory, options), /one release identity/);
+    await f.save('.release/target.json', { ...f.target, schemaVersion: 2, version: '0.3.2', releaseVersion: '0.3.2' });
+    await assert.rejects(verifyRetained(f.directory, { root: f.root, releaseTag: 'v0.3.2', archive: f.archive }), /stable/);
 });
 test('numeric preview cannot claim the stable Marketplace channel', async t => {
     const f = await fixture(t);
     await f.save('.release/target.json', { ...f.target, schemaVersion: 2, version: '0.3.2', releaseVersion: '0.3.2', channel: 'alpha' });
-    assert.throws(() => publishStable(f.root, { run: () => assert.fail('Must not publish preview') }), /only through GitHub/);
+    assert.throws(() => publishStable(f.root, { run: () => assert.fail('Must not publish preview') }), /stable/);
 });
 
-test('standalone packaging carries preview metadata for every numeric preview patch', () => {
-    for (let patch = 0; patch <= 9; patch++) {
+test('standalone packaging emits stable metadata for every numeric patch', () => {
+    for (let patch = 0; patch <= 12; patch++) {
         const version = '0.3.' + patch;
-        assert.deepEqual(packageArguments({ schemaVersion: 2, version, releaseVersion: version, channel: patch ? 'alpha' : 'stable' }), ['package', '--no-dependencies', ...(patch ? ['--pre-release'] : [])]);
+        assert.deepEqual(packageArguments({ schemaVersion: 2, version, releaseVersion: version, channel: 'stable' }), ['package', '--no-dependencies']);
     }
     assert.deepEqual(packageArguments({ schemaVersion: 1, version: '0.2.9', releaseVersion: '0.2.2-alpha.9', channel: 'alpha' }), ['package', '--no-dependencies', '--pre-release']);
 });

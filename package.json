@@ -2,7 +2,7 @@
   "name": "vscode-drawmotive",
   "displayName": "DrawMotive - Diagram & Flowchart Editor",
   "description": "Make your ideas easy to understand. Edit diagrams in VS Code and share them as PNGs you can open and edit again.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "drawmotive",
   "repository": {
     "type": "git",
@@ -97,6 +97,6 @@
     "webpack-cli": "^7.2.3"
   },
   "dependencies": {
-    "@drawmotive/editor": "0.3.0"
+    "@drawmotive/editor": "0.3.1"
   }
 }

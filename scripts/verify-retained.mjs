@@ -20,7 +20,7 @@ export async function verifyRetained(directory, { root = path.resolve(import.met
   assert.ok([1, 2].includes(target.schemaVersion), 'Unknown release target schema');
   const legacy = target.schemaVersion === 1;
   assert.equal(target.channel, 'alpha');
-  assert.equal(releaseChannel(target.releaseVersion, { legacy }), target.channel);
+  assert.equal(releaseChannel(target.releaseVersion, { legacy, channel: target.channel }), target.channel);
   if (!legacy) assert.equal(target.version, target.releaseVersion, 'Numeric products share one release identity');
   assert.equal(releaseTag, 'v' + (legacy ? target.releaseVersion.replace('-alpha.', '-pre.') : target.releaseVersion));
   assert.equal(evidence.receipt.name, pkg.name);

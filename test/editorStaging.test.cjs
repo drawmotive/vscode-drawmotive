@@ -1,13 +1,15 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { mkdtemp, mkdir, writeFile, readFile, rm, symlink } = require('node:fs/promises');
+const { mkdtemp, mkdir, writeFile, readFile, rm, symlink, realpath } = require('node:fs/promises');
 const { tmpdir } = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { stageEditor, editorEntry } = require('../scripts/stage-editor.cjs');
 
 async function fixture(t) {
-    const root = await mkdtemp(path.join(tmpdir(), 'editor-staging-'));
+    // macOS /tmp and Windows short-name temporary paths can alias an ancestor.
+    // Stage from the canonical fixture root, as production candidate resolution does.
+    const root = await realpath(await mkdtemp(path.join(tmpdir(), 'editor-staging-')));
     t.after(() => rm(root, { recursive: true, force: true }));
     const save = async (file, bytes) => {
         const destination = path.join(root, file);

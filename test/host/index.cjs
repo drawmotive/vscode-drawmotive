@@ -78,14 +78,17 @@ exports.run = async function () {
         const csp = await webview.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
         assert.match(csp, /default-src 'none'/);
         assert.match(csp, /script-src 'nonce-/);
-        evidence.checks.push('installed asWebviewUri modules and strict CSP load the HTTP WASM frame with the real MessagePort handshake');
+        evidence.checks.push('installed asWebviewUri modules and strict CSP load the native canvas with packaged Blob Workers');
         const bounds = await webview.evaluate(() => {
             const rect = document.getElementById('editor').getBoundingClientRect();
-            return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, viewportWidth: innerWidth, viewportHeight: innerHeight };
+            return { x: rect.x, y: rect.y, bottom: rect.bottom, actionsBottom: document.getElementById('actions').getBoundingClientRect().bottom, width: rect.width, viewportWidth: innerWidth, viewportHeight: innerHeight };
         });
-        assert.deepEqual(bounds, { x: 0, y: 0, width: bounds.viewportWidth, height: bounds.viewportHeight, viewportWidth: bounds.viewportWidth, viewportHeight: bounds.viewportHeight });
+        assert.equal(bounds.x, 0);
+        assert.equal(bounds.y, bounds.actionsBottom);
+        assert.equal(bounds.bottom, bounds.viewportHeight);
+        assert.equal(bounds.width, bounds.viewportWidth);
         assert.equal(await webview.locator('#status').isVisible(), false);
-        evidence.checks.push('editor fills the webview bounds and normal status messages occupy no space');
+        evidence.checks.push('canvas fills the space below host Save and normal status messages occupy no space');
         assert.equal(await runtime.getByTestId('home-toolbar-profile').count(), 0);
         assert.equal(await runtime.getByTestId('badge-not-syncing').count(), 0);
         assert.equal(await runtime.locator('script[src*="googletagmanager"], script[src*="google-analytics"]').count(), 0);
@@ -179,10 +182,9 @@ async function findWebview(browser) {
 }
 async function findRuntime(webview) {
     return retry(async () => {
-        const runtime = webview.childFrames().find(frame => frame.url().includes('/embed.html'));
-        assert.ok(runtime, 'Direct SDK runtime frame not found');
-        await runtime.getByTestId('editor-action-host.save').waitFor();
-        return runtime;
+        await webview.locator('#editor canvas').first().waitFor();
+        assert.equal(webview.childFrames().length, 0, 'SDK canvas must mount in the host webview');
+        return webview;
     });
 }
 async function ready(webview) {
@@ -199,7 +201,7 @@ async function save(runtime, uri) {
     });
 }
 async function drawRectangle(runtime, offset = 0) {
-    await runtime.getByTestId('home-toolbar-rectangle').click();
+    await runtime.locator('canvas').first().press('r');
     const canvas = await runtime.locator('canvas').first().boundingBox();
     assert.ok(canvas);
     const mouse = runtime.page().mouse;

@@ -46,29 +46,19 @@ test('serves only token-scoped editor assets with browser MIME types', async t =
     assert.equal(forwardedStatus, 200);
 });
 
-test('webview loads SDK modules locally and gives only the runtime an HTTP frame origin', () => {
+test('canvas webview owns Save and permits only packaged scripts, styles, data and Blob workers', () => {
     const { editorWebviewHtml } = require('../out/editorWebview');
-    const html = editorWebviewHtml({ assetBaseUrl: 'https://forwarded.example/token/', scriptUrl: 'https://webview.example/editor.js', cspSource: 'https://webview.example', sessionId: 'session' });
+    const html = editorWebviewHtml({ assetBaseUrl: 'https://webview.example/editor/', scriptUrl: 'https://webview.example/webview/editor.js', cspSource: 'https://webview.example', sessionId: 'session' });
     assert.match(html, /script-src 'nonce-[a-f0-9]+'/);
-    assert.ok(html.includes('https://webview.example'));
-    assert.ok(html.includes('frame-src https://forwarded.example'));
-    assert.ok(html.includes('type="module" src="https://webview.example/editor.js"'));
+    assert.ok(html.includes("'wasm-unsafe-eval'"));
+    assert.ok(html.includes("worker-src blob:;"));
+    assert.ok(html.includes("connect-src https://webview.example data: blob:;"));
+    assert.ok(html.includes("frame-src 'none';"));
+    assert.ok(html.includes('type="module" src="https://webview.example/webview/editor.js"'));
+    assert.ok(html.includes('id="save"'));
     assert.equal(html.includes('<iframe'), false);
-    assert.equal(html.includes('<button'), false);
+    assert.equal(html.includes('runtimeDocument'), false);
     const escaped = editorWebviewHtml({ assetBaseUrl: 'http://localhost/', scriptUrl: 'https://webview.example/"<script>', cspSource: 'https://webview.example', sessionId: '</script><script>alert(1)</script>' });
     assert.equal(escaped.includes('</script><script>alert(1)'), false);
-    assert.match(escaped, /\\u003c/);
-});
-
-test('browser runtime document allows only VS Code resources and enables CORS dynamic imports', () => {
-    const { editorRuntimeDocument } = require('../out/editorRuntimeDocument');
-    const html = editorRuntimeDocument('<html><head><base href="./"></head><body><script src="_framework/blazor.webassembly.js" autostart="false"></script></body></html>', 'https://vscode-remote+tunnel-host.vscode-resource.vscode-cdn.net/editor/', 'https://*.vscode-cdn.net');
-    assert.ok(html.includes('<base href="https://vscode-remote+tunnel-host.vscode-resource.vscode-cdn.net/editor/">'));
-    assert.ok(html.includes('<script crossorigin="anonymous" src="_framework/blazor.webassembly.js" autostart="false">'));
-    assert.ok(html.includes("connect-src https://*.vscode-cdn.net data: blob:;"));
-    assert.ok(html.includes("script-src https://*.vscode-cdn.net 'wasm-unsafe-eval';"));
-    const outer = require('../out/editorWebview').editorWebviewHtml({ assetBaseUrl: 'https://assets.example/', runtimeDocument: html, scriptUrl: 'https://host.example/editor.js', cspSource: 'https://host.example', sessionId: 'browser' });
-    assert.ok(outer.includes("frame-src 'self';"));
-    const config = JSON.parse(outer.split('id="editor-config"')[1].split('</script>')[0].split('>').slice(1).join('>'));
-    assert.equal(config.runtimeDocument, html, 'Embedded runtime HTML must survive JSON escaping unchanged.');
+    assert.match(escaped, /\u003c/);
 });

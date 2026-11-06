@@ -21,7 +21,7 @@ async function regularTree(directory) {
     }
 }
 
-/** A local candidate is explicitly supplied, verified by its protocol-v2 SDK
+/** A local candidate is explicitly supplied, verified by its runtime-v1 SDK
  * copier, and tested from temporary assets. Registry locks, installed packages
  * and the normal distributable directory remain independent release inputs. */
 async function candidatePackage(input, extracted) {
@@ -44,7 +44,7 @@ async function testCandidate(input) {
         const packageRoot = await candidatePackage(input, temporary);
         const { entry, manifest: pkg } = await editorEntry(packageRoot);
         const native = JSON.parse(await readFile(path.join(packageRoot, 'generated/editor-manifest.json'), 'utf8'));
-        if (native.protocolVersion !== 2 || native.packageName !== pkg.name || native.packageVersion !== pkg.version) throw new Error('Candidate requires a matching protocol-v2 Editor manifest.');
+        if (native.runtimeVersion !== 1 || native.protocolVersion !== undefined || native.packageName !== pkg.name || native.packageVersion !== pkg.version) throw new Error('Candidate requires a matching runtime-v1 Editor manifest.');
         const { verifyAssets } = await import(pathToFileURL(path.join(packageRoot, 'scripts/verify-assets.mjs')).href);
         await verifyAssets(packageRoot);
         const destination = path.join(temporary, 'staged');

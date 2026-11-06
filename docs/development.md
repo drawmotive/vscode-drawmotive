@@ -34,11 +34,14 @@ npm run test:browser
 
 The exact `@drawmotive/editor` version and npm registry integrity are locked in
 `package-lock.json`. Each compile verifies and stages the package runtime under
-ignored `dist/editor/`; the VSIX includes those assets for offline editing. No
+ignored `dist/editor/`. SDK JavaScript retains its package layout under
+`dist/webview/sdk/src/` and `dist/webview/sdk/dist/workers/`, so nested imports
+and package-relative Worker URLs resolve inside the VSIX. Staging rejects unsafe
+paths and symbolic links. The VSIX includes these assets for offline editing. No
 .NET build or private editor checkout is required. Upgrade the dependency and
 lockfile together, then compile again.
 
-Before registry publication, test an explicitly selected protocol-v2 Editor
+Before registry publication, test an explicitly selected runtime-v1 canvas Editor
 package directory or retained npm archive without changing installed packages
 or the release lockfile:
 
@@ -52,45 +55,29 @@ and runtime assets, compiles TypeScript, and runs the browser harness serially.
 It does not establish registry dependency or release readiness. Normal builds
 continue to consume the exact installed registry version.
 
-Press F5 to launch the extension. Use **Save diagram** in the editor toolbar to write
+Press F5 to launch the extension. Use the host's **Save diagram** button to write
 the PNG preview and editable document back to the `.draw.png` file. The extension
-loads the public SDK directly from webview assets and serves its packaged WASM
-runtime on a temporary loopback port in desktop VS Code; VS Code resolves that
-URL for remote extension hosts. Browser workbenches load the packaged runtime
-through authenticated VS Code webview resources instead. PNG encoding and
-embedded document validation belong to that
-runtime. A successful file write confirms only the exported revision, so edits
+loads the public SDK and packaged WASM through authenticated VS Code webview
+resources in desktop and browser workbenches. The SDK mounts one canvas directly
+in the webview. Worker JavaScript is fetched from packaged resources and runs
+through a host-owned Blob URL, released when its Worker is disposed. PNG encoding
+and embedded document validation belong to the runtime. A successful file write confirms only the exported revision, so edits
 made during saving remain unsaved. External file changes request reload approval
 when the editor has unsaved changes. New drawings are exported by a temporary
 runtime before their file is created. Linux desktop candidate tests cover this
 workflow; Windows/macOS still require verification.
 
-### Remote Tunnels transport
+### Canvas input and resource transport
 
-Version 0.2.1 loaded its packaged WASM through `asWebviewUri`, which uses the
-authenticated VS Code resource service. The SDK migration replaced this with
-an HTTP iframe served by the remote Extension Host. In vscode.dev, `asExternalUri`
-can leave that loopback URL unchanged, so the browser attempts to connect to its
-own `127.0.0.1` and reports a refused connection.
+With canvas focus, V selects, R draws a rectangle, A draws an arrow, O draws an
+ellipse, D draws a diamond, T creates text, and Escape cancels the interaction.
+Ctrl/Cmd+S uses the same acknowledged file-save operation as **Save diagram**.
+IME composition, repeated keys, and host inputs do not trigger canvas commands.
 
-Browser hosts now choose the authenticated resource transport before creating
-the runtime. The SDK first loads a same-origin controlled bootstrap document,
-then writes the trusted packaged runtime HTML into it. This retains the VS Code
-resource service worker. The embedded runtime keeps its navigation URL separate
-from its asset URL because tunnel resource hostnames can contain `+`, which
-.NET URI parsing rejects. Classic scripts use CORS mode to preserve the base URL
-of their dynamic imports. Resources and document I/O remain inside VS Code; no
-third-party runtime CDN is used.
-
-The locked registry dependency `@drawmotive/editor@0.3.0` includes the
-`frameDocument` option and updated embedded runtime. Regular builds now bundle
-the corrected runtime. The stable `0.3.0` VSIX was verified against its exact
-retained bytes in the Linux VS Code host. The earlier manual vscode.dev
-validation described above applies to the regression candidate; it is not a
-separate manual certification of every published release.
-
-Release scripts enforce `.release/target.json`; the extension and bundled
-Editor SDK now share the published stable `0.3.0` identity.
+Both host modes use `asWebviewUri`; no runtime iframe or loopback forwarding is
+required. The controlled webview retains VS Code's resource service worker. Its
+CSP allows packaged scripts and resources, WASM compilation, and Blob Workers;
+it forbids child frames. Resources and document I/O remain inside VS Code.
 
 The local VSIX command above packages without publishing. `release:check`
 and publish scripts retain eligibility checks. See

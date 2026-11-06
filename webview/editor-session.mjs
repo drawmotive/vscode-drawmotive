@@ -1,7 +1,7 @@
 /** The product owns file identity, save confirmation and reload decisions; the
  * public SDK owns document validation, revisions and PNG encoding. A file write
  * only establishes the baseline for its exact exported snapshot. */
-export function startEditorSession({ createEditor, vscode, container, status, assetBaseUrl, frameDocument, sessionId, mode = 'edit' }) {
+export function startEditorSession({ createEditor, vscode, container, status, saveButton, assetBaseUrl, workerFactory, sessionId, mode = 'edit' }) {
     const controller = new AbortController();
     const pending = new Map();
     let sequence = 0;
@@ -17,7 +17,6 @@ export function startEditorSession({ createEditor, vscode, container, status, as
     let imports = Promise.resolve();
     let phase = mode === 'create' ? 'Creating diagram…' : 'Loading editor…';
     let loadError;
-    let actionEnabled;
 
     const send = message => { if (!disposed) vscode.postMessage({ ...message, sessionId }); };
     const dirty = () => loaded && (currentState?.revision === null || currentState?.revision !== savedRevision);
@@ -35,15 +34,11 @@ export function startEditorSession({ createEditor, vscode, container, status, as
     };
     const update = () => {
         if (disposed) return;
-        // Only file/PNG load failures occupy webview space. Progress and save
-        // errors belong to the action state and VS Code notifications.
+        // The host owns Save; the canvas SDK owns document state and editing.
         status.textContent = loadError || '';
         status.hidden = !loadError;
         const enabled = loaded && currentState?.health === 'healthy' && !saving && !phase;
-        if (editor && mode === 'edit' && actionEnabled !== enabled) {
-            actionEnabled = enabled;
-            editor.setActionState('host.save', { enabled }).catch(report);
-        }
+        saveButton.disabled = mode !== 'edit' || !enabled;
     };
     const report = error => {
         if (disposed) return;
@@ -154,9 +149,7 @@ export function startEditorSession({ createEditor, vscode, container, status, as
 
     const ready = (async () => {
         editor = await createEditor({
-            container, assetBaseUrl, ...(frameDocument ? { frameDocument } : {}), signal: controller.signal,
-            modules: { analytics: false, authentication: false, remoteSync: false },
-            ui: { actions: mode === 'edit' ? [{ id: 'host.save', label: 'Save diagram', icon: 'save', enabled: false, onInvoke: save }] : [] },
+            container, assetBaseUrl, signal: controller.signal, workerFactory,
         });
         // Do not expose an editable empty scene while waiting for the file.
         await completed(editor.setEditingEnabled(false));
@@ -176,6 +169,24 @@ export function startEditorSession({ createEditor, vscode, container, status, as
 
     return {
         ready,
+        save: () => save({ signal: controller.signal }),
+        // Canvas focus is the input boundary: native inline text, host controls,
+        // IME and system shortcuts retain their browser behavior.
+        keydown(event) {
+            if (disposed || !loaded || mode !== 'edit' || !editor || event.defaultPrevented || event.isComposing || event.keyCode === 229 || event.repeat
+                || event.target?.tagName !== 'CANVAS' || event.target.isContentEditable || event.altKey || event.shiftKey) return;
+            const key = event.key.toLowerCase();
+            if ((event.ctrlKey || event.metaKey) && key === 's') {
+                event.preventDefault();
+                if (!saveButton.disabled) save({ signal: controller.signal }).catch(() => {});
+                return;
+            }
+            if (event.ctrlKey || event.metaKey || currentState?.health !== 'healthy' || !currentState.editingEnabled) return;
+            const tool = { v: 'select', a: 'arrow', r: 'rectangle', o: 'ellipse', d: 'diamond', t: 'text' }[key];
+            if (!tool && key !== 'escape') return;
+            event.preventDefault();
+            Promise.resolve().then(() => tool ? editor.setTool(tool) : editor.cancelInteraction()).catch(report);
+        },
         receive(message) {
             if (disposed || !message || message.sessionId !== sessionId) return;
             if (['saved', 'createdSaved', 'saveFailed', 'reloadDecision'].includes(message.type)) settle(message);
@@ -186,6 +197,7 @@ export function startEditorSession({ createEditor, vscode, container, status, as
         async dispose() {
             if (disposed) return;
             disposed = true;
+            saveButton.disabled = true;
             controller.abort(new Error('Editor closed.'));
             unsubscribe?.();
             for (const entry of pending.values()) {

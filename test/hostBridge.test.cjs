@@ -6,7 +6,7 @@ async function host(options = {}) {
     const { startEditorSession } = await import('../webview/editor-session.mjs');
     const messages = [];
     const replacements = [];
-    const actionStates = [];
+    const saveButton = { disabled: true };
     const calls = [];
     const status = {};
     let config;
@@ -17,7 +17,6 @@ async function host(options = {}) {
     const editor = {
         onStateChanged: listener => { subscriber = listener; listener(state); return () => { subscriber = undefined; }; },
         getState: async () => state,
-        setActionState: async (id, value) => actionStates.push({ id, ...value }),
         setEditingEnabled: async enabled => { calls.push(['editing', enabled]); emit({ editingEnabled: enabled }); },
         replacePngDocument: async png => {
             calls.push(['replace', png]);
@@ -32,6 +31,8 @@ async function host(options = {}) {
             emit({ revision: `loaded-${replacements.length}` });
         },
         clearDocument: async () => { calls.push(['clear']); emit({ revision: 'blank-' + calls.length }); },
+        setTool: async tool => { calls.push(['tool', tool]); if (options.toolError) throw new Error('Tool unavailable'); },
+        cancelInteraction: async () => { calls.push(['cancel']); },
         fitViewport: async () => { calls.push(['fit']); },
         exportSnapshot: async exportOptions => {
             calls.push(['export', exportOptions]);
@@ -42,13 +43,13 @@ async function host(options = {}) {
     };
     const session = startEditorSession({
         createEditor: async value => { config = value; if (options.startupError) throw new Error('Startup failed'); return editor; },
-        vscode: { postMessage: message => messages.push(message) }, container: {}, status,
+        vscode: { postMessage: message => messages.push(message) }, container: {}, status, saveButton, workerFactory: async () => {},
         assetBaseUrl: 'http://127.0.0.1:123/token/', sessionId: 'session', mode: options.mode,
     });
     if (options.mode !== 'create') await session.ready.catch(() => {});
     await tick();
     const receive = async message => { session.receive({ sessionId: 'session', ...message }); await tick(); };
-    return { session, receive, messages, replacements, calls, status, actionStates, config, emit, disposed: () => disposed, state: () => state };
+    return { session, receive, messages, replacements, calls, status, saveButton, config, emit, disposed: () => disposed, state: () => state };
 }
 
 async function loadedHost(t, options) {
@@ -58,16 +59,49 @@ async function loadedHost(t, options) {
     return result;
 }
 
-test('direct SDK host declares product Save, imports complete PNG, and fits without changing baseline', async t => {
+test('canvas host uses supported SDK options and owns Save while retaining the PNG baseline', async t => {
     const h = await loadedHost(t);
-    assert.deepEqual(h.config.modules, { analytics: false, authentication: false, remoteSync: false });
+    assert.deepEqual(Object.keys(h.config).sort(), ['assetBaseUrl', 'container', 'signal', 'workerFactory']);
     assert.equal(h.config.assetBaseUrl, 'http://127.0.0.1:123/token/');
-    assert.equal(h.config.ui.actions[0].id, 'host.save');
     assert.deepEqual(h.replacements, ['initial']);
     assert.equal(h.status.textContent, '');
     assert.equal(h.status.hidden, true);
-    assert.equal(h.actionStates.at(-1).enabled, true);
+    assert.equal(h.saveButton.disabled, false);
     assert.deepEqual(h.calls.slice(-4), [['editing', false], ['replace', 'initial'], ['fit'], ['editing', true]]);
+});
+
+test('canvas tool keys ignore host inputs and IME while Save uses the existing file acknowledgment', async t => {
+    const h = await loadedHost(t);
+    let prevented = 0;
+    const event = value => ({ key: 'r', target: { tagName: 'CANVAS' }, preventDefault: () => { prevented++; }, ...value });
+    for (const value of [{ isComposing: true }, { keyCode: 229 }, { repeat: true }, { target: { tagName: 'INPUT' } }, { target: { tagName: 'CANVAS', isContentEditable: true } }, { altKey: true }, { shiftKey: true }, { ctrlKey: true }]) h.session.keydown(event(value));
+    await tick();
+    assert.equal(h.calls.some(call => call[0] === 'tool'), false);
+    h.session.keydown(event({}));
+    h.session.keydown(event({ key: 'Escape' }));
+    await tick();
+    assert.deepEqual(h.calls.slice(-2), [['tool', 'rectangle'], ['cancel']]);
+    h.session.keydown(event({ key: 's', ctrlKey: true }));
+    await tick();
+    const request = h.messages.find(message => message.type === 'save');
+    assert.ok(request);
+    assert.equal(h.saveButton.disabled, true);
+    await h.receive({ type: 'saved', requestId: request.requestId, revision: request.revision });
+    assert.equal(h.saveButton.disabled, false);
+    assert.equal(prevented, 3);
+});
+
+test('tool commands use current public identifiers and reject errors without unhandled promises', async t => {
+    const h = await loadedHost(t, { toolError: true });
+    for (const key of ['v', 'a', 'r', 'o', 'd', 't']) h.session.keydown({ key, target: { tagName: 'CANVAS' }, preventDefault() {} });
+    await tick();
+    assert.deepEqual(h.calls.filter(call => call[0] === 'tool').map(call => call[1]), ['select', 'arrow', 'rectangle', 'ellipse', 'diamond', 'text']);
+    assert.equal(h.messages.filter(message => message.type === 'error' && message.error === 'Tool unavailable').length, 6);
+    await h.session.dispose();
+    const count = h.calls.length;
+    h.session.keydown({ key: 'r', target: { tagName: 'CANVAS' }, preventDefault() { assert.fail('Disposed canvas cannot claim input'); } });
+    await tick();
+    assert.equal(h.calls.length, count);
 });
 test('zero-byte drawing opens a clean editable blank document and saves only on request', async t => {
     const h = await host();
@@ -76,10 +110,10 @@ test('zero-byte drawing opens a clean editable blank document and saves only on 
     assert.deepEqual(h.replacements, []);
     assert.equal(h.calls.filter(call => call[0] === 'clear').length, 1);
     assert.equal(h.state().editingEnabled, true);
-    assert.equal(h.actionStates.at(-1).enabled, true);
+    assert.equal(h.saveButton.disabled, false);
     assert.equal(h.status.hidden, true);
     assert.equal(h.messages.some(message => ['save', 'error'].includes(message.type)), false);
-    const saving = h.config.ui.actions[0].onInvoke();
+    const saving = h.session.save();
     await tick();
     const request = h.messages.find(message => message.type === 'save');
     assert.equal(request.png, 'PNG-' + h.state().revision);
@@ -129,7 +163,7 @@ test('a successful read of the current file clears its load error without replac
 test('Save awaits the exact acknowledgment and keeps edits after its snapshot dirty', async t => {
     const h = await loadedHost(t);
     h.emit({ revision: 'edited' });
-    const saving = h.config.ui.actions[0].onInvoke({ signal: new AbortController().signal });
+    const saving = h.session.save({ signal: new AbortController().signal });
     let completed = false;
     saving.then(() => { completed = true; });
     await tick();
@@ -145,14 +179,14 @@ test('Save awaits the exact acknowledgment and keeps edits after its snapshot di
     await h.receive({ type: 'saved', requestId: request.requestId, revision: request.revision });
     await saving;
     assert.equal(h.status.hidden, true);
-    assert.equal(h.actionStates.at(-1).enabled, true);
+    assert.equal(h.saveButton.disabled, false);
     assert.equal(h.replacements.length, 1);
 });
 
 test('successful save establishes its source, while a disk revert is a real replacement', async t => {
     const h = await loadedHost(t);
     h.emit({ revision: 'edited' });
-    const saving = h.config.ui.actions[0].onInvoke();
+    const saving = h.session.save();
     await tick();
     const request = h.messages.find(message => message.type === 'save');
     await h.receive({ type: 'saved', requestId: request.requestId, revision: request.revision });
@@ -168,7 +202,7 @@ test('successful save establishes its source, while a disk revert is a real repl
 test('save failure preserves dirty data and permits a new save request', async t => {
     const h = await loadedHost(t);
     h.emit({ revision: 'edited' });
-    const saving = h.config.ui.actions[0].onInvoke();
+    const saving = h.session.save();
     const rejected = assert.rejects(saving, /Disk full/);
     await tick();
     const request = h.messages.find(message => message.type === 'save');
@@ -176,9 +210,9 @@ test('save failure preserves dirty data and permits a new save request', async t
     await rejected;
     assert.equal(h.status.hidden, true);
     assert.equal(h.messages.some(message => message.type === 'error' && message.error === 'Disk full'), true);
-    assert.equal(h.actionStates.at(-1).enabled, true);
+    assert.equal(h.saveButton.disabled, false);
     assert.equal(h.state().revision, 'edited');
-    const retry = h.config.ui.actions[0].onInvoke();
+    const retry = h.session.save();
     await tick();
     const next = h.messages.filter(message => message.type === 'save').at(-1);
     assert.notEqual(next.requestId, request.requestId);
@@ -232,7 +266,7 @@ test('invalid external PNG retains the same instance, document and editing gate'
 test('external updates arriving during save wait for write acknowledgment', async t => {
     const h = await loadedHost(t);
     h.emit({ revision: 'edited' });
-    const saving = h.config.ui.actions[0].onInvoke();
+    const saving = h.session.save();
     await tick();
     const request = h.messages.find(message => message.type === 'save');
     await h.receive({ type: 'external', png: 'external' });
@@ -261,7 +295,7 @@ test('foreign sessions cannot load or acknowledge saves', async t => {
     const h = await loadedHost(t);
     await h.receive({ type: 'external', sessionId: 'foreign', png: 'foreign' });
     assert.deepEqual(h.replacements, ['initial']);
-    const saving = h.config.ui.actions[0].onInvoke();
+    const saving = h.session.save();
     await tick();
     const request = h.messages.find(message => message.type === 'save');
     await h.receive({ type: 'saved', sessionId: 'foreign', requestId: request.requestId, revision: request.revision });
@@ -275,7 +309,7 @@ test('creation exports blank runtime PNG, waits for write, then disposes before 
     t.after(() => h.session.dispose());
     assert.equal(h.messages.some(message => message.type === 'ready'), false);
     assert.deepEqual(h.replacements, []);
-    assert.deepEqual(h.config.ui.actions, []);
+    assert.equal(h.saveButton.disabled, true);
     const request = h.messages.find(message => message.type === 'createFile');
     assert.ok(request);
     assert.equal(request.png, 'PNG-empty');

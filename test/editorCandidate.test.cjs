@@ -24,14 +24,14 @@ test('candidate selection requires an explicit absolute package directory or ret
     assert.deepEqual(JSON.parse(await readFile(path.join(selected, 'package.json'), 'utf8')), { name: '@drawmotive/editor' });
 });
 
-test('protocol-v1 candidate fails before invoking helpers and leaves registry and distributable inputs intact', async t => {
+test('historical candidate fails before invoking helpers and leaves registry and distributable inputs intact', async t => {
     const root = await mkdtemp(path.join(tmpdir(), 'editor-candidate-test-'));
     t.after(() => rm(root, { recursive: true, force: true }));
     await mkdir(path.join(root, 'generated'));
     await writeFile(path.join(root, 'package.json'), JSON.stringify({ name: '@drawmotive/editor', version: '0.2.2-alpha.7', exports: { '.': { default: './src/index.js' } } }));
-    await writeFile(path.join(root, 'generated/editor-manifest.json'), JSON.stringify({ protocolVersion: 1, packageName: '@drawmotive/editor', packageVersion: '0.2.2-alpha.7' }));
+    await writeFile(path.join(root, 'generated/editor-manifest.json'), JSON.stringify({ protocolVersion: 2, packageName: '@drawmotive/editor', packageVersion: '0.2.2-alpha.7' }));
     const before = await Promise.all(['package.json', 'package-lock.json'].map(file => readFile(file, 'utf8')));
-    await assert.rejects(testCandidate(root), /protocol-v2/);
+    await assert.rejects(testCandidate(root), /runtime-v1/);
     const after = await Promise.all(['package.json', 'package-lock.json'].map(file => readFile(file, 'utf8')));
     assert.deepEqual(after, before);
     // No helper files are present: rejection must precede helper import/staging.

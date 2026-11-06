@@ -22,6 +22,7 @@ async function fixture(t) {
     await save('package/src/nested/core.js', "export { value } from '../value.js'; export const workerUrl = new URL('../../dist/workers/resource.worker.js', import.meta.url);");
     await save('package/src/value.js', 'export const value = 42;');
     await save('package/dist/workers/resource.worker.js', 'postMessage(42);');
+    await save('package/dist/workers/document.worker.js', 'postMessage("document");');
     await save('package/LICENSE', 'MIT');
     await save('package/licenses/notice.txt', 'Runtime notice');
     await save('package/scripts/copy-assets.mjs', "import { writeFile } from 'node:fs/promises'; export async function copyAssets(destination) { await writeFile(destination + '/runtime.wasm', 'native runtime'); }");
@@ -40,6 +41,7 @@ test('staged SDK resolves nested modules and package-relative workers without it
     const staged = await import(pathToFileURL(path.join(f.options.destination, 'webview/sdk/src/index.js')).href);
     assert.equal(staged.value, 42);
     assert.equal(await readFile(staged.workerUrl, 'utf8'), 'postMessage(42);');
+    assert.equal(await readFile(path.join(f.options.destination, 'webview/sdk/dist/workers/document.worker.js'), 'utf8'), 'postMessage("document");');
     assert.equal(await readFile(path.join(f.options.destination, 'editor/runtime.wasm'), 'utf8'), 'native runtime');
 });
 
@@ -53,11 +55,25 @@ test('staging rejects SDK module and worker symlinks', async t => {
     }
 });
 
-test('an absent historical Worker tree is allowed but a dangling Worker directory link is rejected', async t => {
+test('staging requires the current SDK Worker tree', async t => {
     const f = await fixture(t);
     const workers = path.join(f.options.packageRoot, 'dist/workers');
     await rm(workers, { recursive: true });
-    await stageEditor(f.options);
+    await assert.rejects(stageEditor(f.options), /Worker directory.*missing/);
+});
+
+test('staging requires both current SDK Worker bundles', async t => {
+    for (const names of [['resource.worker.js'], ['document.worker.js'], ['resource.worker.js', 'document.worker.js']]) {
+        const f = await fixture(t);
+        for (const name of names) await rm(path.join(f.options.packageRoot, 'dist/workers', name));
+        await assert.rejects(stageEditor(f.options), /required SDK Worker bundle/);
+    }
+});
+
+test('staging rejects a dangling Worker directory link', async t => {
+    const f = await fixture(t);
+    const workers = path.join(f.options.packageRoot, 'dist/workers');
+    await rm(workers, { recursive: true });
     await symlink(path.join(f.root, 'missing'), workers, 'dir');
     await assert.rejects(stageEditor(f.options), /symbolic links|symlink/);
 });

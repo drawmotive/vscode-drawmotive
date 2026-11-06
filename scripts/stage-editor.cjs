@@ -36,10 +36,17 @@ async function stageEditor({ root, packageRoot, entry, destination }) {
     const workers = path.join(packageRoot, 'dist/workers');
     let workerInfo;
     try { workerInfo = await lstat(workers); }
-    catch (error) { if (error.code !== 'ENOENT') throw error; }
-    if (workerInfo) {
-        if (!workerInfo.isDirectory()) throw new Error('SDK Worker directory must not be a symlink or nonregular directory.');
-        await copyModules(workers, path.join(webview, 'sdk/dist/workers'));
+    catch (error) { if (error.code === 'ENOENT') throw new Error('SDK Worker directory is missing.', { cause: error }); throw error; }
+    if (!workerInfo.isDirectory()) throw new Error('SDK Worker directory must not be a symlink or nonregular directory.');
+    await copyModules(workers, path.join(webview, 'sdk/dist/workers'));
+    // Both services are part of the current canvas SDK, even when a host only
+    // opens a blank document or its first font is already cached.
+    for (const name of ['document.worker.js', 'resource.worker.js']) {
+        const bundle = await lstat(path.join(workers, name)).catch(error => {
+            if (error.code === 'ENOENT') throw new Error('Missing required SDK Worker bundle: ' + name, { cause: error });
+            throw error;
+        });
+        if (!bundle.isFile()) throw new Error('A required SDK Worker bundle must be a regular file: ' + name);
     }
     await copyFile(path.join(packageRoot, 'LICENSE'), path.join(runtime, 'LICENSE'));
     await cp(path.join(packageRoot, 'licenses'), path.join(runtime, 'licenses'), { recursive: true });

@@ -10,6 +10,12 @@ notices, SkiaSharp, HarfBuzzSharp, Radzen and RBush license files, SIL Open
 Font License 1.1 text-font notices, and Apache License 2.0 Material Symbols
 license and notice files.
 
+The public Editor UI is bundled with its React/Mantine dependencies. Preserve
+dist/webview/editor-ui-NOTICES.txt, which contains the actual license and
+copyright notices for every bundled package, and the adjacent
+MaterialSymbols-LICENSE.txt and MaterialSymbols-NOTICE.txt. Explicit candidate
+builds identify their selected Editor/UI inputs separately from registry locks.
+
 VS Code tooling and other dependencies retain their own licenses. The
 extension MIT license does not replace dependency terms or grant rights to
 the private source used to produce the compiled Editor runtime.

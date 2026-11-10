@@ -43,7 +43,6 @@ try {
     const editor = await createEditor({
       container: document.getElementById('editor'),
       assetBaseUrl: `${host}generated/editor/`,
-      modules: { analytics: false, authentication: false, remoteSync: false },
     });
     let phase = 'importing TextGraph';
     try {

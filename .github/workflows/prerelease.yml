@@ -23,6 +23,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - run: npm install --global npm@12.2.1
       - name: Download GitHub preview evidence
         env:
           GH_TOKEN: ${{ github.token }}

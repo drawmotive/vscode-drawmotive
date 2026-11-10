@@ -8,5 +8,6 @@
     "@drawmotive/editor": "0.3.1"
   },
   "native": false,
-  "publishable": true
+  "publishable": false,
+  "excludedReason": "Editor UI migration requires compatible published Editor/UI packages and their prepared registry locks."
 }

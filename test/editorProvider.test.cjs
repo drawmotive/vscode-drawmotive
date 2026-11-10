@@ -74,20 +74,22 @@ test('browser Remote Tunnels use authenticated webview resources without startin
     assert.equal(h.starts(), 0);
     assert.equal(h.externalUris(), 0);
     assert.equal(config.assetBaseUrl, 'https://webview.example/extension/dist/editor/');
-    assert.ok(config.runtimeDocument.includes('<base href="https://webview.example/extension/dist/editor/">'));
-    assert.ok(panel.webview.html.includes("frame-src 'self';"));
+    assert.equal(config.runtimeDocument, undefined);
+    assert.ok(panel.webview.html.includes("frame-src 'none';"));
     assert.deepEqual(Array.from(panel.webview.options.localResourceRoots, value => value.path), ['/extension/dist/webview', '/extension/dist/editor']);
     await panel.send({ type: 'ready', sessionId: panel.sessionId() });
     assert.equal(h.reads.at(-1), drawing);
     panel.dispose();
 });
 
-test('new drawing writes no placeholder and opens only after successful runtime creation cleanup', async () => {
+test('desktop canvas uses packaged resources and new drawing writes no placeholder and opens only after successful runtime creation cleanup', async () => {
     const h = harness();
     const creating = h.provider.createDrawing(h.uri('/drawing.draw.png'));
     await tick();
     const panel = h.panels[0];
     const sessionId = panel.sessionId();
+    assert.equal(h.starts(), 0);
+    assert.equal(h.externalUris(), 0);
     await panel.send({ type: 'ready', sessionId });
     await panel.send({ type: 'creationComplete', sessionId });
     assert.equal(h.writes.length, 0);
@@ -103,7 +105,7 @@ test('new drawing writes no placeholder and opens only after successful runtime 
     assert.equal(h.commands[0][0], 'vscode.openWith');
     assert.equal(h.commands[0][2], 'drawmotive.editor');
     assert.equal(panel.disposed, true);
-    assert.deepEqual(Array.from(panel.webview.options.localResourceRoots, value => value.path), ['/extension/dist/webview']);
+    assert.deepEqual(Array.from(panel.webview.options.localResourceRoots, value => value.path), ['/extension/dist/webview', '/extension/dist/editor']);
 });
 
 test('closing creation panel cancels queued writes and never opens the editor', async () => {

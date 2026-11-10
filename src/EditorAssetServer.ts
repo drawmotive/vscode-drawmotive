@@ -9,9 +9,9 @@ const contentTypes: Record<string, string> = {
     '.png': 'image/png', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.woff2': 'font/woff2',
 };
 
-/** The public editor requires an HTTP(S) frame for Blazor navigation and its
- * runtime. Serve packaged assets on loopback instead of rewriting
- * the published runtime for vscode-webview: URLs. No workspace files are served. */
+/** Rendering utilities and isolated tests serve a selected package over HTTP.
+ * Production webviews use authenticated VS Code resources directly; this helper
+ * never exposes files above its selected asset root. */
 export class EditorAssetServer {
     private readonly token = randomBytes(24).toString('hex');
     private server?: Server;

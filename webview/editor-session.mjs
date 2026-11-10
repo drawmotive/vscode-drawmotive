@@ -1,11 +1,13 @@
 /** The product owns file identity, save confirmation and reload decisions; the
  * public SDK owns document validation, revisions and PNG encoding. A file write
  * only establishes the baseline for its exact exported snapshot. */
-export function startEditorSession({ createEditor, vscode, container, status, assetBaseUrl, frameDocument, sessionId, mode = 'edit' }) {
+export function startEditorSession({ createEditor, mountEditorUi, vscode, container, status, saveButton, assetBaseUrl, workerFactory, sessionId, mode = 'edit' }) {
     const controller = new AbortController();
     const pending = new Map();
     let sequence = 0;
     let editor;
+    let controls;
+    let editorClosing;
     let unsubscribe;
     let disposed = false;
     let loaded = false;
@@ -17,7 +19,6 @@ export function startEditorSession({ createEditor, vscode, container, status, as
     let imports = Promise.resolve();
     let phase = mode === 'create' ? 'Creating diagram…' : 'Loading editor…';
     let loadError;
-    let actionEnabled;
 
     const send = message => { if (!disposed) vscode.postMessage({ ...message, sessionId }); };
     const dirty = () => loaded && (currentState?.revision === null || currentState?.revision !== savedRevision);
@@ -35,20 +36,17 @@ export function startEditorSession({ createEditor, vscode, container, status, as
     };
     const update = () => {
         if (disposed) return;
-        // Only file/PNG load failures occupy webview space. Progress and save
-        // errors belong to the action state and VS Code notifications.
+        // The host owns Save; the canvas SDK owns document state and editing.
         status.textContent = loadError || '';
         status.hidden = !loadError;
         const enabled = loaded && currentState?.health === 'healthy' && !saving && !phase;
-        if (editor && mode === 'edit' && actionEnabled !== enabled) {
-            actionEnabled = enabled;
-            editor.setActionState('host.save', { enabled }).catch(report);
-        }
+        saveButton.disabled = mode !== 'edit' || !enabled;
     };
     const report = error => {
         if (disposed) return;
         send({ type: 'error', error: errorText(error) });
     };
+    const closeEditor = () => editor ? editorClosing ??= editor.dispose() : Promise.resolve();
     const request = (type, data, signal) => {
         if (disposed || signal?.aborted) return Promise.reject(signal?.reason ?? new Error('Editor closed.'));
         const requestId = `${sessionId}:${++sequence}`;
@@ -154,10 +152,9 @@ export function startEditorSession({ createEditor, vscode, container, status, as
 
     const ready = (async () => {
         editor = await createEditor({
-            container, assetBaseUrl, ...(frameDocument ? { frameDocument } : {}), signal: controller.signal,
-            modules: { analytics: false, authentication: false, remoteSync: false },
-            ui: { actions: mode === 'edit' ? [{ id: 'host.save', label: 'Save diagram', icon: 'save', enabled: false, onInvoke: save }] : [] },
+            container, assetBaseUrl, signal: controller.signal, workerFactory,
         });
+        if (disposed) { await closeEditor(); throw controller.signal.reason; }
         // Do not expose an editable empty scene while waiting for the file.
         await completed(editor.setEditingEnabled(false));
         unsubscribe = editor.onStateChanged(state => {
@@ -167,15 +164,35 @@ export function startEditorSession({ createEditor, vscode, container, status, as
         if (mode === 'create') {
             const blank = await completed(editor.exportSnapshot({ formats: ['png'], png: { embedDocument: true } }));
             await request('createFile', { revision: blank.revision, png: blank.png.base64 }, controller.signal);
-            await editor.dispose();
+            await closeEditor();
             send({ type: 'creationComplete' });
-        } else send({ type: 'ready' });
+        } else {
+            // Controls use this exact public SDK instance; file acknowledgments
+            // remain host-owned and do not enter the UI package or native API.
+            if (disposed) return;
+            controls = mountEditorUi({ editor, container, onError: report });
+            send({ type: 'ready' });
+        }
     })();
     ready.catch(error => { phase = undefined; update(); report(error); });
     update();
 
     return {
         ready,
+        save: () => save({ signal: controller.signal }),
+        // Canvas focus is the input boundary: native inline text, host controls,
+        // IME and system shortcuts retain their browser behavior.
+        keydown(event) {
+            if (disposed || !loaded || mode !== 'edit' || !editor || event.defaultPrevented || event.isComposing || event.keyCode === 229 || event.repeat
+                || event.target?.tagName !== 'CANVAS' || event.target.isContentEditable || event.altKey || event.shiftKey) return;
+            const key = event.key.toLowerCase();
+            if ((event.ctrlKey || event.metaKey) && key === 's') {
+                event.preventDefault();
+                if (!saveButton.disabled) save({ signal: controller.signal }).catch(() => {});
+                return;
+            }
+            // Drawing, selection and interaction keys belong to the shared UI.
+        },
         receive(message) {
             if (disposed || !message || message.sessionId !== sessionId) return;
             if (['saved', 'createdSaved', 'saveFailed', 'reloadDecision'].includes(message.type)) settle(message);
@@ -186,6 +203,7 @@ export function startEditorSession({ createEditor, vscode, container, status, as
         async dispose() {
             if (disposed) return;
             disposed = true;
+            saveButton.disabled = true;
             controller.abort(new Error('Editor closed.'));
             unsubscribe?.();
             for (const entry of pending.values()) {
@@ -193,7 +211,13 @@ export function startEditorSession({ createEditor, vscode, container, status, as
                 entry.reject(new Error('Editor closed.'));
             }
             pending.clear();
-            await editor?.dispose();
+            try { controls?.dispose(); }
+            finally {
+                // Abort prevents new work; entered SDK creation must still
+                // return and release its native/Worker scope before we finish.
+                await ready.catch(() => {});
+                await closeEditor();
+            }
         },
     };
 }

@@ -1,17 +1,28 @@
-import { createEditor } from './sdk.js';
+import { createEditor } from './sdk/src/index.js';
+import { mountEditorUi } from './editor-ui.js';
 import { startEditorSession } from './editor-session.mjs';
 
 const config = JSON.parse(document.getElementById('editor-config').textContent);
-// Load the current controlled webview document first to retain its service
-// worker, then let the SDK write the trusted packaged runtime into that frame.
-const frameDocument = config.runtimeDocument === undefined ? undefined : { url: window.frameElement.src, html: config.runtimeDocument };
+const saveButton = document.getElementById('save');
+// Dedicated Workers cannot start directly from a foreign VS Code resource
+// origin. Fetch the packaged self-contained Worker and own its Blob lifetime.
+const workerFactory = async (url, options) => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Worker asset unavailable: HTTP ${response.status}`);
+    const blob = URL.createObjectURL(await response.blob());
+    let worker;
+    try { worker = new Worker(blob, options); }
+    catch (error) { URL.revokeObjectURL(blob); throw error; }
+    return { worker, dispose() { worker.terminate(); URL.revokeObjectURL(blob); } };
+};
 const session = startEditorSession({
-    ...config, frameDocument, createEditor, vscode: acquireVsCodeApi(),
+    ...config, saveButton, workerFactory, createEditor, mountEditorUi, vscode: acquireVsCodeApi(),
     container: document.getElementById('editor'), status: document.getElementById('status'),
 });
+saveButton.addEventListener('click', () => { session.save().catch(() => {}); });
+document.getElementById('editor').addEventListener('keydown', session.keydown);
 addEventListener('message', event => {
-    // The extension preloader sends from the webview origin; runtime messages
-    // travel over its private SDK port and must never become file operations.
+    // Only the controlled extension preloader can deliver file operations.
     if (event.origin === location.origin) session.receive(event.data);
 });
 addEventListener('pagehide', () => { session.dispose().catch(() => {}); }, { once: true });

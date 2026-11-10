@@ -1,11 +1,13 @@
 /** The product owns file identity, save confirmation and reload decisions; the
  * public SDK owns document validation, revisions and PNG encoding. A file write
  * only establishes the baseline for its exact exported snapshot. */
-export function startEditorSession({ createEditor, vscode, container, status, saveButton, assetBaseUrl, workerFactory, sessionId, mode = 'edit' }) {
+export function startEditorSession({ createEditor, mountEditorUi, vscode, container, status, saveButton, assetBaseUrl, workerFactory, sessionId, mode = 'edit' }) {
     const controller = new AbortController();
     const pending = new Map();
     let sequence = 0;
     let editor;
+    let controls;
+    let editorClosing;
     let unsubscribe;
     let disposed = false;
     let loaded = false;
@@ -44,6 +46,7 @@ export function startEditorSession({ createEditor, vscode, container, status, sa
         if (disposed) return;
         send({ type: 'error', error: errorText(error) });
     };
+    const closeEditor = () => editor ? editorClosing ??= editor.dispose() : Promise.resolve();
     const request = (type, data, signal) => {
         if (disposed || signal?.aborted) return Promise.reject(signal?.reason ?? new Error('Editor closed.'));
         const requestId = `${sessionId}:${++sequence}`;
@@ -151,6 +154,7 @@ export function startEditorSession({ createEditor, vscode, container, status, sa
         editor = await createEditor({
             container, assetBaseUrl, signal: controller.signal, workerFactory,
         });
+        if (disposed) { await closeEditor(); throw controller.signal.reason; }
         // Do not expose an editable empty scene while waiting for the file.
         await completed(editor.setEditingEnabled(false));
         unsubscribe = editor.onStateChanged(state => {
@@ -160,9 +164,15 @@ export function startEditorSession({ createEditor, vscode, container, status, sa
         if (mode === 'create') {
             const blank = await completed(editor.exportSnapshot({ formats: ['png'], png: { embedDocument: true } }));
             await request('createFile', { revision: blank.revision, png: blank.png.base64 }, controller.signal);
-            await editor.dispose();
+            await closeEditor();
             send({ type: 'creationComplete' });
-        } else send({ type: 'ready' });
+        } else {
+            // Controls use this exact public SDK instance; file acknowledgments
+            // remain host-owned and do not enter the UI package or native API.
+            if (disposed) return;
+            controls = mountEditorUi({ editor, container, onError: report });
+            send({ type: 'ready' });
+        }
     })();
     ready.catch(error => { phase = undefined; update(); report(error); });
     update();
@@ -181,11 +191,7 @@ export function startEditorSession({ createEditor, vscode, container, status, sa
                 if (!saveButton.disabled) save({ signal: controller.signal }).catch(() => {});
                 return;
             }
-            if (event.ctrlKey || event.metaKey || currentState?.health !== 'healthy' || !currentState.editingEnabled) return;
-            const tool = { v: 'select', a: 'arrow', r: 'rectangle', o: 'ellipse', d: 'diamond', t: 'text' }[key];
-            if (!tool && key !== 'escape') return;
-            event.preventDefault();
-            Promise.resolve().then(() => tool ? editor.setTool(tool) : editor.cancelInteraction()).catch(report);
+            // Drawing, selection and interaction keys belong to the shared UI.
         },
         receive(message) {
             if (disposed || !message || message.sessionId !== sessionId) return;
@@ -205,7 +211,13 @@ export function startEditorSession({ createEditor, vscode, container, status, sa
                 entry.reject(new Error('Editor closed.'));
             }
             pending.clear();
-            await editor?.dispose();
+            try { controls?.dispose(); }
+            finally {
+                // Abort prevents new work; entered SDK creation must still
+                // return and release its native/Worker scope before we finish.
+                await ready.catch(() => {});
+                await closeEditor();
+            }
         },
     };
 }

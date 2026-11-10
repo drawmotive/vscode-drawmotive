@@ -20,6 +20,40 @@ workbench check, and manual validation in vscode.dev through Remote Tunnels on
 
 ## Build and package
 
+### Current UI migration boundary
+
+The host now mounts the public React/Mantine controls through
+`@drawmotive/editor-ui` on the same canvas used for PNG file operations. The
+public controls own drawing shortcuts, selection properties, settings and help;
+the extension retains Save and Ctrl/Cmd+S. UI effects are disposed before the
+canvas. The bundle includes React/Mantine and styles for offline loading, and
+its Editor imports resolve to the host's staged SDK.
+
+The first UI package is not yet published on npm. The factual registry lock
+still records Editor 0.3.1; normal compilation intentionally rejects missing UI
+adoption rather than resolving an ancestor source workspace. Before normal
+compilation and release can resume, publish compatible Editor/UI packages and
+prepare their actual registry dependency locks through the release workflow.
+The integration release deferral remains in place.
+
+Build the public JavaScript packages, then test explicit candidates from the
+integration workspace without publishing or building .NET:
+
+```bash
+npm run component -- editor build
+npm run component -- editor-ui build
+npm run component -- vscode-editor test:browser:candidate /absolute/editor-package /absolute/editor-ui-package
+npm run component -- vscode-editor test:host:candidate /absolute/editor-package /absolute/editor-ui-package
+```
+
+The Editor argument accepts a built package directory or retained `.tgz`. The
+UI argument requires a built directory with its React/Mantine dependencies
+installed; an unpacked UI archive alone does not include them. Both are
+required so a candidate never silently substitutes a registry or source input.
+The commands use temporary staging and preserve registry manifests and locks.
+
+### Registry build after UI publication
+
 Supports Node.js 22 with npm 10. Install the published editor and build the extension:
 
 ```bash
@@ -46,8 +80,8 @@ package directory or retained npm archive without changing installed packages
 or the release lockfile:
 
 ```bash
-npm run test:browser:candidate -- /absolute/path/to/editor-package
-npm run test:browser:candidate -- /absolute/path/to/drawmotive-editor.tgz
+npm run test:browser:candidate -- /absolute/path/to/editor-package /absolute/path/to/editor-ui-package
+npm run test:browser:candidate -- /absolute/path/to/drawmotive-editor.tgz /absolute/path/to/editor-ui-package
 ```
 
 This verifies the candidate manifest and runtime hashes, stages temporary SDK
@@ -69,7 +103,7 @@ workflow; Windows/macOS still require verification.
 
 ### Canvas input and resource transport
 
-With canvas focus, V selects, R draws a rectangle, A draws an arrow, O draws an
+With canvas focus, R draws a rectangle, A draws an arrow, O draws an
 ellipse, D draws a diamond, T creates text, and Escape cancels the interaction.
 Ctrl/Cmd+S uses the same acknowledged file-save operation as **Save diagram**.
 IME composition, repeated keys, and host inputs do not trigger canvas commands.
@@ -90,8 +124,8 @@ Vulnerability reports follow [Security reporting](../SECURITY.md).
 Test an explicitly selected Editor candidate in the actual VS Code workbench:
 
 ```bash
-npm run test:host:candidate -- /absolute/path/to/editor-package
-npm run test:host:candidate -- /absolute/path/to/drawmotive-editor.tgz
+npm run test:host:candidate -- /absolute/path/to/editor-package /absolute/path/to/editor-ui-package
+npm run test:host:candidate -- /absolute/path/to/drawmotive-editor.tgz /absolute/path/to/editor-ui-package
 ```
 
 The command builds and installs an isolated candidate VSIX, then verifies file

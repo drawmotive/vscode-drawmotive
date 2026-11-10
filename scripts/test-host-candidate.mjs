@@ -10,7 +10,7 @@ import { pathToFileURL } from 'node:url';
 import { downloadAndUnzipVSCode, resolveCliArgsFromVSCodeExecutablePath } from '@vscode/test-electron';
 
 const require = createRequire(import.meta.url);
-const { candidatePackage } = require('./test-browser-candidate.cjs');
+const { candidatePackage, candidateUiPackage } = require('./test-browser-candidate.cjs');
 const { stageEditor, editorEntry } = require('./stage-editor.cjs');
 const { verifyExample } = require('./example-evidence.cjs');
 const root = path.resolve(import.meta.dirname, '..');
@@ -20,7 +20,7 @@ const capture = process.argv.includes('--capture');
 /** Install an explicitly selected candidate as a real VSIX. The driver lives
  * in a separate development extension, so package URLs, CSP and activation
  * are exercised by VS Code itself. Normal dist and registry locks are untouched. */
-async function main(input, retained = false) {
+async function main(input, retained = false, uiInput) {
     assert.ok(input && path.isAbsolute(input), 'Select an absolute Editor package or retained VSIX path');
     const rendered = capture ? verifyExample(JSON.parse(await readFile(path.join(root, 'examples/online-order.render.json'), 'utf8')), {
         source: await readFile(path.join(root, 'examples/online-order.textgraph')),
@@ -42,13 +42,14 @@ async function main(input, retained = false) {
         const extracted = path.join(artifacts, 'extracted');
         await mkdir(extracted);
         const packageRoot = await candidatePackage(input, extracted);
+        const uiPackageRoot = capture ? undefined : await candidateUiPackage(uiInput);
         const selected = await editorEntry(packageRoot);
         const { entry } = selected; sdk = selected.manifest;
         const { verifyAssets } = await import(pathToFileURL(path.join(packageRoot, 'scripts/verify-assets.mjs')).href);
         native = await verifyAssets(packageRoot);
         const product = path.join(artifacts, 'product');
         const dist = path.join(product, 'dist');
-        await stageEditor({ root, packageRoot, entry, destination: dist });
+        await stageEditor({ root, packageRoot, entry, destination: dist, uiPackageRoot });
         // Bundle the actual production entry; only its output directory changes.
         await command(process.execPath, [path.join(root, 'node_modules/webpack-cli/bin/cli.js'), '--mode', 'production', '--output-path', dist], { cwd: root });
         const manifest = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
@@ -145,4 +146,4 @@ async function command(executable, args, options = {}) {
 }
 
 const args = process.argv.slice(2);
-main(capture ? path.join(root, 'node_modules/@drawmotive/editor') : args.at(-1), args[0] === '--vsix').catch(error => { console.error(error); process.exitCode = 1; });
+main(capture ? path.join(root, 'node_modules/@drawmotive/editor') : args[0] === '--vsix' ? args[1] : args[0], args[0] === '--vsix', args[1]).catch(error => { console.error(error); process.exitCode = 1; });

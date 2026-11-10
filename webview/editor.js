@@ -1,4 +1,5 @@
 import { createEditor } from './sdk/src/index.js';
+import { mountEditorUi } from './editor-ui.js';
 import { startEditorSession } from './editor-session.mjs';
 
 const config = JSON.parse(document.getElementById('editor-config').textContent);
@@ -15,7 +16,7 @@ const workerFactory = async (url, options) => {
     return { worker, dispose() { worker.terminate(); URL.revokeObjectURL(blob); } };
 };
 const session = startEditorSession({
-    ...config, saveButton, workerFactory, createEditor, vscode: acquireVsCodeApi(),
+    ...config, saveButton, workerFactory, createEditor, mountEditorUi, vscode: acquireVsCodeApi(),
     container: document.getElementById('editor'), status: document.getElementById('status'),
 });
 saveButton.addEventListener('click', () => { session.save().catch(() => {}); });

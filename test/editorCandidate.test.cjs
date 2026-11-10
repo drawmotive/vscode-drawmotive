@@ -5,7 +5,7 @@ const { tmpdir } = require('node:os');
 const path = require('node:path');
 const { promisify } = require('node:util');
 const { execFile } = require('node:child_process');
-const { candidatePackage, testCandidate } = require('../scripts/test-browser-candidate.cjs');
+const { candidatePackage, candidateUiPackage, testCandidate } = require('../scripts/test-browser-candidate.cjs');
 
 test('candidate selection requires an explicit absolute package directory or retained archive', async t => {
     const root = await mkdtemp(path.join(tmpdir(), 'editor-candidate-test-'));
@@ -18,6 +18,9 @@ test('candidate selection requires an explicit absolute package directory or ret
     assert.equal(await candidatePackage(packageRoot, root), await realpath(packageRoot));
     const archive = path.join(root, 'candidate.tgz');
     await promisify(execFile)('tar', ['-czf', archive, '-C', root, 'package']);
+    await assert.rejects(candidateUiPackage(archive), /directory with installed dependencies/);
+    await assert.rejects(candidateUiPackage('relative/package'), /absolute/);
+    assert.equal(await candidateUiPackage(packageRoot), await realpath(packageRoot));
     const extracted = path.join(root, 'extracted');
     await mkdir(extracted);
     const selected = await candidatePackage(archive, extracted);

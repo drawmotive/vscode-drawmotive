@@ -1,6 +1,7 @@
-const { mkdir, rm, copyFile, readFile, cp, readdir, realpath, lstat } = require('node:fs/promises');
+const { mkdir, rm, copyFile, readFile, writeFile, cp, readdir, realpath, lstat } = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { editorUiFiles } = require('./bundle-editor-ui.cjs');
 
 /** Preserve package-relative module/Worker URLs without shipping declarations
  * or accepting a symlink that reads code outside the selected package. */
@@ -20,11 +21,12 @@ async function copyModules(source, destination) {
 /** Registry builds and explicitly selected candidates share the SDK's asset
  * integrity authority. Callers choose an isolated staging root; this function
  * never substitutes package identity or rewrites its native manifest. */
-async function stageEditor({ root, packageRoot, entry, destination }) {
+async function stageEditor({ root, packageRoot, entry, destination, uiPackageRoot }) {
     packageRoot = await realpath(packageRoot);
     if (await realpath(entry) !== entry || !entry.startsWith(path.join(packageRoot, 'src') + path.sep)) throw new Error('Editor entry must be a regular module within its package src directory.');
     const output = path.resolve(destination);
     if (output === packageRoot || output.startsWith(packageRoot + path.sep)) throw new Error('Editor staging must be outside its source package.');
+    const ui = await editorUiFiles({ root, uiPackageRoot });
     const { copyAssets } = await import(pathToFileURL(path.join(packageRoot, 'scripts/copy-assets.mjs')).href);
     await rm(destination, { recursive: true, force: true });
     const runtime = path.join(destination, 'editor');
@@ -53,6 +55,7 @@ async function stageEditor({ root, packageRoot, entry, destination }) {
     for (const file of ['editor.js', 'editor-session.mjs']) {
         await copyFile(path.join(root, 'webview', file), path.join(webview, file));
     }
+    for (const [file, bytes] of ui) await writeFile(path.join(webview, file), bytes);
 }
 
 /** Resolving the public export respects the same entry as package consumers. */

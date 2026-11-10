@@ -39,9 +39,10 @@ async function host(options = {}) {
             if (options.exportError) throw new Error('Export failed');
             return { revision: state.revision, png: { base64: `PNG-${state.revision}` } };
         },
-        dispose: async () => { disposed++; },
+        dispose: async () => { calls.push(['dispose-canvas']); disposed++; },
     };
     const session = startEditorSession({
+        mountEditorUi: value => { calls.push(['mount-ui', value.editor === editor]); return { dispose() { calls.push(['dispose-ui']); } }; },
         createEditor: async value => { config = value; if (options.startupError) throw new Error('Startup failed'); return editor; },
         vscode: { postMessage: message => messages.push(message) }, container: {}, status, saveButton, workerFactory: async () => {},
         assetBaseUrl: 'http://127.0.0.1:123/token/', sessionId: 'session', mode: options.mode,
@@ -70,39 +71,59 @@ test('canvas host uses supported SDK options and owns Save while retaining the P
     assert.deepEqual(h.calls.slice(-4), [['editing', false], ['replace', 'initial'], ['fit'], ['editing', true]]);
 });
 
-test('canvas tool keys ignore host inputs and IME while Save uses the existing file acknowledgment', async t => {
+test('public controls share the host canvas and unmount before native disposal', async t => {
+    const h = await loadedHost(t);
+    assert.deepEqual(h.calls.filter(call => call[0] === 'mount-ui'), [['mount-ui', true]]);
+    await h.session.dispose();
+    assert.deepEqual(h.calls.slice(-2), [['dispose-ui'], ['dispose-canvas']]);
+    await h.session.dispose();
+    assert.equal(h.calls.filter(call => call[0] === 'dispose-ui').length, 1);
+});
+
+test('closing during startup drains the late canvas without mounting controls', async () => {
+    const { startEditorSession } = await import('../webview/editor-session.mjs');
+    let started, finishClose, mounted = 0, closed = 0;
+    const starting = new Promise(resolve => { started = resolve; });
+    const closing = new Promise(resolve => { finishClose = resolve; });
+    const session = startEditorSession({
+        createEditor: () => starting,
+        mountEditorUi: () => { mounted++; },
+        vscode: { postMessage() {} }, status: {}, saveButton: {},
+    });
+    let complete = false;
+    const disposed = session.dispose().then(() => { complete = true; });
+    await tick();
+    assert.equal(complete, false, 'Disposal must await entered SDK creation');
+    started({ dispose: () => { closed++; return closing; } });
+    await tick();
+    assert.equal(mounted, 0);
+    assert.equal(closed, 1);
+    assert.equal(complete, false, 'Native cleanup must acknowledge disposal');
+    finishClose();
+    await disposed;
+    await assert.rejects(session.ready, /Editor closed/);
+    assert.equal(closed, 1);
+});
+
+test('host Save shortcut leaves drawing shortcuts to the public controls', async t => {
     const h = await loadedHost(t);
     let prevented = 0;
-    const event = value => ({ key: 'r', target: { tagName: 'CANVAS' }, preventDefault: () => { prevented++; }, ...value });
-    for (const value of [{ isComposing: true }, { keyCode: 229 }, { repeat: true }, { target: { tagName: 'INPUT' } }, { target: { tagName: 'CANVAS', isContentEditable: true } }, { altKey: true }, { shiftKey: true }, { ctrlKey: true }]) h.session.keydown(event(value));
+    const event = value => ({ key: 's', ctrlKey: true, target: { tagName: 'CANVAS' }, preventDefault: () => { prevented++; }, ...value });
+    for (const value of [{ isComposing: true }, { keyCode: 229 }, { repeat: true }, { target: { tagName: 'INPUT' } }, { altKey: true }, { shiftKey: true }]) h.session.keydown(event(value));
+    for (const key of ['v', 'a', 'r', 'o', 'd', 't', 'Escape']) h.session.keydown(event({ key, ctrlKey: false }));
     await tick();
-    assert.equal(h.calls.some(call => call[0] === 'tool'), false);
+    assert.equal(h.calls.some(call => call[0] === 'tool' || call[0] === 'cancel'), false);
+    assert.equal(prevented, 0);
     h.session.keydown(event({}));
-    h.session.keydown(event({ key: 'Escape' }));
-    await tick();
-    assert.deepEqual(h.calls.slice(-2), [['tool', 'rectangle'], ['cancel']]);
-    h.session.keydown(event({ key: 's', ctrlKey: true }));
     await tick();
     const request = h.messages.find(message => message.type === 'save');
     assert.ok(request);
     assert.equal(h.saveButton.disabled, true);
     await h.receive({ type: 'saved', requestId: request.requestId, revision: request.revision });
     assert.equal(h.saveButton.disabled, false);
-    assert.equal(prevented, 3);
+    assert.equal(prevented, 1);
 });
 
-test('tool commands use current public identifiers and reject errors without unhandled promises', async t => {
-    const h = await loadedHost(t, { toolError: true });
-    for (const key of ['v', 'a', 'r', 'o', 'd', 't']) h.session.keydown({ key, target: { tagName: 'CANVAS' }, preventDefault() {} });
-    await tick();
-    assert.deepEqual(h.calls.filter(call => call[0] === 'tool').map(call => call[1]), ['select', 'arrow', 'rectangle', 'ellipse', 'diamond', 'text']);
-    assert.equal(h.messages.filter(message => message.type === 'error' && message.error === 'Tool unavailable').length, 6);
-    await h.session.dispose();
-    const count = h.calls.length;
-    h.session.keydown({ key: 'r', target: { tagName: 'CANVAS' }, preventDefault() { assert.fail('Disposed canvas cannot claim input'); } });
-    await tick();
-    assert.equal(h.calls.length, count);
-});
 test('zero-byte drawing opens a clean editable blank document and saves only on request', async t => {
     const h = await host();
     t.after(() => h.session.dispose());

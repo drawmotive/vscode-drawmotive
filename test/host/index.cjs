@@ -73,7 +73,7 @@ exports.run = async function () {
         evidence.checks.push('contributed New Diagram command creates a complete PNG before opening the custom editor');
         let runtime = await findRuntime(webview);
         assert.match(webview.url(), /^vscode-webview:/);
-        const scriptUrl = await webview.locator('script[src]').getAttribute('src');
+        const scriptUrl = await webview.locator('script[type=module][src]').getAttribute('src');
         assert.match(scriptUrl, /vscode-resource/);
         const csp = await webview.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
         assert.match(csp, /default-src 'none'/);
@@ -119,6 +119,12 @@ exports.run = async function () {
         await reloadDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
         await reloadDialog.waitFor({ state: 'hidden' });
         await ready(webview);
+        // A write of the existing saved baseline is a watcher echo, not a
+        // replacement request. Establish a new baseline after proving Cancel
+        // kept the edit, then make an independent dirty edit before Reload.
+        await save(runtime, uri);
+        assert.ok(!Buffer.from(await vscode.workspace.fs.readFile(uri)).equals(edited), 'Cancel must preserve the unsaved rectangle');
+        await drawRectangle(runtime, 240);
         await fs.writeFile(uri.fsPath, edited);
         await reloadDialog.waitFor({ timeout: 20000 });
         await reloadDialog.getByRole('button', { name: 'Reload', exact: true }).click();
@@ -147,7 +153,18 @@ exports.run = async function () {
         await save(runtime, emptyUri);
         assert.deepEqual(await pixels(page, await vscode.workspace.fs.readFile(emptyUri)), await pixels(page, emptyEdited));
         evidence.checks.push('zero-byte .draw.png opens a blank editable canvas without writes or errors and saves/reopens as a complete drawing PNG');
+        // Keep host notifications from covering the controls in UI evidence.
+        await vscode.commands.executeCommand('notifications.clearAll');
+        const canvas = await runtime.locator('canvas').first().boundingBox();
+        await runtime.locator('canvas').first().click({ position: { x: canvas.width / 2, y: canvas.height / 2 } });
+        await runtime.getByTestId('context-toolbar').waitFor({ state: 'visible' });
         await page.screenshot({ path: path.join(artifacts, 'editor.png') });
+        await runtime.getByRole('button', { name: 'Settings', exact: true }).click();
+        // Preferences are acknowledged asynchronously by the native canvas;
+        // wait for its published theme instead of an immediate DOM checkbox.
+        await runtime.getByTestId('settings-dark-theme').click();
+        await runtime.waitForFunction(() => document.querySelector('.dm-editor-ui')?.getAttribute('data-mantine-color-scheme') === 'dark');
+        await page.screenshot({ path: path.join(artifacts, 'editor-dark.png') });
         await vscode.commands.executeCommand('workbench.action.closeAllEditors');
         await fs.writeFile(path.join(artifacts, 'result.json'), JSON.stringify(evidence, null, 2));
         console.log(JSON.stringify(evidence));
@@ -191,6 +208,7 @@ async function ready(webview) {
     const runtime = await findRuntime(webview);
     await runtime.waitForFunction(() => !document.querySelector('[data-testid="editor-action-host.save"]').disabled, null, { timeout: 120000 });
     assert.equal(await webview.locator('#status').isVisible(), false);
+    await runtime.getByTestId('drawing-toolbar').waitFor({ state: 'visible' });
 }
 async function save(runtime, uri) {
     const before = await fs.stat(uri.fsPath, { bigint: true });

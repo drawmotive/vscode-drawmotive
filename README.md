@@ -70,6 +70,6 @@ The downloadable drawing was generated from this source. Canvas changes are save
 
 For a blank canvas, run **DrawMotive: New Diagram** and save as `your-idea.draw.png`.
 
-Works offline, without an account. Requires VS Code 1.95 or newer on Windows, macOS, or Linux.
+Works offline, without an account. Requires VS Code 1.146 or newer on Windows, macOS, or Linux.
 
 [Report an issue](https://github.com/drawmotive/vscode-drawmotive/issues) · [Development](docs/development.md) · [Contributing](CONTRIBUTING.md) · [Release notes](CHANGELOG.md)

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "publisher": "drawmotive-test",
   "engines": {
-    "vscode": "^1.95.0"
+    "vscode": "^1.146.0"
   },
   "main": "index.cjs",
   "activationEvents": [

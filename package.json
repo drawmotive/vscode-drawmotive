@@ -83,20 +83,20 @@
     "examples:capture": "node scripts/test-host-candidate.mjs --capture"
   },
   "devDependencies": {
-    "@types/node": "^22.20.5",
-    "@types/vscode": "1.95.0",
-    "@typescript-eslint/eslint-plugin": "^8.71.1",
-    "@typescript-eslint/parser": "^8.71.1",
-    "@vscode/test-electron": "^2.5.2",
-    "@vscode/vsce": "^4.0.0",
+    "@types/node": "^26.6.6",
+    "@types/vscode": "1.146.0",
+    "@typescript-eslint/eslint-plugin": "^8.72.2",
+    "@typescript-eslint/parser": "^8.72.2",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.1.1",
     "esbuild": "0.28.2",
-    "eslint": "^10.12.0",
-    "globals": "^17.13.0",
-    "playwright": "1.63.0",
+    "eslint": "^10.15.0",
+    "globals": "^17.14.0",
+    "playwright": "1.65.1",
     "ts-loader": "^9.6.2",
     "typescript": "~6.0.3",
-    "webpack": "^5.111.1",
-    "webpack-cli": "^7.2.3"
+    "webpack": "^5.112.2",
+    "webpack-cli": "^7.3.1"
   },
   "dependencies": {
     "@drawmotive/editor": "0.3.1"

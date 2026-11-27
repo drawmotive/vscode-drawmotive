@@ -4,6 +4,12 @@ All notable changes to the DrawMotive extension will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.5]
+
+- Host the public Editor and Editor UI in the drawing editor for `.draw.png` files.
+- Load bundled runtime assets through authenticated VS Code resources in remote browser workbenches.
+- Require VS Code 1.146 or later.
+
 ## [Unreleased]
 
 ### Fixed

@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const tick = () => new Promise(resolve => setImmediate(resolve));
+const transportPng = text => Buffer.from(text).toString('base64');
 
 async function host(options = {}) {
     const { startEditorSession } = await import('../webview/editor-session.mjs');
@@ -18,7 +19,9 @@ async function host(options = {}) {
         onStateChanged: listener => { subscriber = listener; listener(state); return () => { subscriber = undefined; }; },
         getState: async () => state,
         setEditingEnabled: async enabled => { calls.push(['editing', enabled]); emit({ editingEnabled: enabled }); },
-        replacePngDocument: async png => {
+        replacePngDocument: async bytes => {
+            assert.ok(bytes instanceof Uint8Array, 'Editor SDK accepts PNG bytes');
+            const png = Buffer.from(bytes).toString();
             calls.push(['replace', png]);
             if (options.replaceTimeout && png === 'delayed') {
                 const error = new Error('Operation result unknown');
@@ -37,7 +40,7 @@ async function host(options = {}) {
         exportSnapshot: async exportOptions => {
             calls.push(['export', exportOptions]);
             if (options.exportError) throw new Error('Export failed');
-            return { revision: state.revision, png: { base64: `PNG-${state.revision}` } };
+            return { revision: state.revision, png: { bytes: new Uint8Array(Buffer.from('PNG-' + state.revision)) } };
         },
         dispose: async () => { calls.push(['dispose-canvas']); disposed++; },
     };
@@ -56,7 +59,7 @@ async function host(options = {}) {
 async function loadedHost(t, options) {
     const result = await host(options);
     t.after(() => result.session.dispose());
-    await result.receive({ type: 'load', png: 'initial' });
+    await result.receive({ type: 'load', png: transportPng('initial') });
     return result;
 }
 
@@ -137,7 +140,7 @@ test('zero-byte drawing opens a clean editable blank document and saves only on 
     const saving = h.session.save();
     await tick();
     const request = h.messages.find(message => message.type === 'save');
-    assert.equal(request.png, 'PNG-' + h.state().revision);
+    assert.equal(request.png, transportPng('PNG-' + h.state().revision));
     await h.receive({ type: 'saved', requestId: request.requestId, revision: request.revision });
     await saving;
     assert.equal(h.status.hidden, true);
@@ -174,7 +177,7 @@ test('a successful read of the current file clears its load error without replac
     h.emit({ revision: 'unsaved' });
     await h.receive({ type: 'loadFailed', error: 'Temporary read failure' });
     assert.equal(h.status.hidden, false);
-    await h.receive({ type: 'external', png: 'initial' });
+    await h.receive({ type: 'external', png: transportPng('initial') });
     assert.equal(h.status.hidden, true);
     assert.equal(h.state().revision, 'unsaved');
     assert.deepEqual(h.replacements, ['initial']);
@@ -189,7 +192,7 @@ test('Save awaits the exact acknowledgment and keeps edits after its snapshot di
     saving.then(() => { completed = true; });
     await tick();
     const request = h.messages.find(message => message.type === 'save');
-    assert.equal(request.png, 'PNG-edited');
+    assert.equal(request.png, transportPng('PNG-edited'));
     assert.equal(request.revision, 'edited');
     assert.deepEqual(h.calls.find(call => call[0] === 'export')[1], { formats: ['png'], png: { embedDocument: true } });
     assert.equal(h.state().editingEnabled, true);
@@ -215,7 +218,7 @@ test('successful save establishes its source, while a disk revert is a real repl
     assert.equal(h.status.hidden, true);
     await h.receive({ type: 'external', png: request.png });
     assert.deepEqual(h.replacements, ['initial']);
-    await h.receive({ type: 'external', png: 'initial' });
+    await h.receive({ type: 'external', png: transportPng('initial') });
     assert.deepEqual(h.replacements, ['initial', 'initial']);
     assert.equal(h.status.hidden, true);
 });
@@ -245,7 +248,7 @@ test('save failure preserves dirty data and permits a new save request', async t
 test('external replacement freezes dirty edits until a correlated reload decision', async t => {
     const h = await loadedHost(t);
     h.emit({ revision: 'unsaved' });
-    await h.receive({ type: 'external', png: 'external' });
+    await h.receive({ type: 'external', png: transportPng('external') });
     const request = h.messages.find(message => message.type === 'confirmReload');
     assert.ok(request);
     assert.equal(h.state().editingEnabled, false);
@@ -256,7 +259,7 @@ test('external replacement freezes dirty edits until a correlated reload decisio
     assert.deepEqual(h.replacements, ['initial']);
     assert.equal(h.state().revision, 'unsaved');
     assert.equal(h.state().editingEnabled, true);
-    await h.receive({ type: 'external', png: 'external-next' });
+    await h.receive({ type: 'external', png: transportPng('external-next') });
     const next = h.messages.filter(message => message.type === 'confirmReload').at(-1);
     await h.receive({ type: 'reloadDecision', requestId: next.requestId, reload: true });
     assert.deepEqual(h.replacements, ['initial', 'external-next']);
@@ -267,7 +270,7 @@ test('external replacement freezes dirty edits until a correlated reload decisio
 test('invalid external PNG retains the same instance, document and editing gate', async t => {
     const h = await loadedHost(t);
     const revision = h.state().revision;
-    await h.receive({ type: 'external', png: 'invalid' });
+    await h.receive({ type: 'external', png: transportPng('invalid') });
     assert.equal(h.state().revision, revision);
     assert.equal(h.state().editingEnabled, true);
     assert.deepEqual(h.replacements, ['initial']);
@@ -276,7 +279,7 @@ test('invalid external PNG retains the same instance, document and editing gate'
     assert.equal(h.status.hidden, false);
     h.emit({ revision: 'later-edit' });
     assert.equal(h.status.hidden, false, 'Edits cannot dismiss a failed PNG load');
-    await h.receive({ type: 'external', png: 'valid-next' });
+    await h.receive({ type: 'external', png: transportPng('valid-next') });
     const decision = h.messages.filter(message => message.type === 'confirmReload').at(-1);
     await h.receive({ type: 'reloadDecision', requestId: decision.requestId, reload: true });
     assert.deepEqual(h.replacements, ['initial', 'valid-next']);
@@ -290,7 +293,7 @@ test('external updates arriving during save wait for write acknowledgment', asyn
     const saving = h.session.save();
     await tick();
     const request = h.messages.find(message => message.type === 'save');
-    await h.receive({ type: 'external', png: 'external' });
+    await h.receive({ type: 'external', png: transportPng('external') });
     assert.deepEqual(h.replacements, ['initial']);
     await h.receive({ type: 'saved', requestId: request.requestId, revision: request.revision });
     await saving;
@@ -301,7 +304,7 @@ test('external updates arriving during save wait for write acknowledgment', asyn
 test('timed out replacement waits for its late result before restoring editing and baseline', async t => {
     let finish;
     const h = await loadedHost(t, { replaceTimeout: () => new Promise(resolve => { finish = resolve; }) });
-    await h.receive({ type: 'external', png: 'delayed' });
+    await h.receive({ type: 'external', png: transportPng('delayed') });
     assert.equal(h.state().editingEnabled, false);
     assert.deepEqual(h.replacements, ['initial']);
     assert.equal(h.status.hidden, true);
@@ -314,7 +317,7 @@ test('timed out replacement waits for its late result before restoring editing a
 
 test('foreign sessions cannot load or acknowledge saves', async t => {
     const h = await loadedHost(t);
-    await h.receive({ type: 'external', sessionId: 'foreign', png: 'foreign' });
+    await h.receive({ type: 'external', sessionId: 'foreign', png: transportPng('foreign') });
     assert.deepEqual(h.replacements, ['initial']);
     const saving = h.session.save();
     await tick();
@@ -333,7 +336,7 @@ test('creation exports blank runtime PNG, waits for write, then disposes before 
     assert.equal(h.saveButton.disabled, true);
     const request = h.messages.find(message => message.type === 'createFile');
     assert.ok(request);
-    assert.equal(request.png, 'PNG-empty');
+    assert.equal(request.png, transportPng('PNG-empty'));
     assert.equal(h.disposed(), 0);
     assert.equal(h.messages.some(message => message.type === 'creationComplete'), false);
     await h.receive({ type: 'createdSaved', requestId: request.requestId, revision: request.revision });

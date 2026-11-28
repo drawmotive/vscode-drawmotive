@@ -1,3 +1,14 @@
+/** Use Base64 across the host message boundary and keep byte views in the SDK.
+ * Chunk the string conversion so large drawings fit within argument limits. */
+function encodePng(bytes) {
+    const chunks = [];
+    const chunkSize = 32 * 1024;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)));
+    }
+    return btoa(chunks.join(''));
+}
+
 /** The product owns file identity, save confirmation and reload decisions; the
  * public SDK owns document validation, revisions and PNG encoding. A file write
  * only establishes the baseline for its exact exported snapshot. */
@@ -76,9 +87,10 @@ export function startEditorSession({ createEditor, mountEditorUi, vscode, contai
         const operation = (async () => {
             try {
                 const snapshot = await completed(editor.exportSnapshot({ formats: ['png'], png: { embedDocument: true } }));
-                await request('save', { revision: snapshot.revision, png: snapshot.png.base64 }, signal);
+                const png = encodePng(snapshot.png.bytes);
+                await request('save', { revision: snapshot.revision, png }, signal);
                 savedRevision = snapshot.revision;
-                savedSource = snapshot.png.base64;
+                savedSource = png;
                 loadedSource = undefined;
                 currentState = await completed(editor.getState());
             } catch (error) {
@@ -124,7 +136,7 @@ export function startEditorSession({ createEditor, mountEditorUi, vscode, contai
             // invalid PNG. Reset through the SDK so storage/history/revisions
             // share the same authority as ordinary document replacement.
             if (message.png === '') await completed(editor.clearDocument());
-            else await completed(editor.replacePngDocument(message.png));
+            else await completed(editor.replacePngDocument(Uint8Array.from(atob(message.png), value => value.charCodeAt(0))));
             // The new baseline belongs to the completed replacement, even if
             // a later viewport adjustment fails. Viewport does not edit data.
             currentState = await completed(editor.getState());
@@ -163,7 +175,7 @@ export function startEditorSession({ createEditor, mountEditorUi, vscode, contai
         });
         if (mode === 'create') {
             const blank = await completed(editor.exportSnapshot({ formats: ['png'], png: { embedDocument: true } }));
-            await request('createFile', { revision: blank.revision, png: blank.png.base64 }, controller.signal);
+            await request('createFile', { revision: blank.revision, png: encodePng(blank.png.bytes) }, controller.signal);
             await closeEditor();
             send({ type: 'creationComplete' });
         } else {

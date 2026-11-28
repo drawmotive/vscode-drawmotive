@@ -52,7 +52,7 @@ try {
       phase = 'exporting the preview';
       const preview = await editor.exportSnapshot({ formats: ['png'], render: { scale: 2 } });
       phase = 'reopening the editable PNG';
-      await editor.replacePngDocument(drawing.png.base64);
+      await editor.replacePngDocument(drawing.png.bytes);
       phase = 'checking the reopened document';
       const reopened = await editor.exportSnapshot({ formats: ['png'], render: { scale: 2 } });
       return { drawing, preview, reopened, state: await editor.getState() };
@@ -64,11 +64,11 @@ try {
   }, { source, host: host.url });
   assert.equal(errors.length, 0, errors.join('\n'));
   assert.equal(result.state.health, 'healthy');
-  assert.ok(result.reopened.png.base64 === result.preview.png.base64, 'Reopening must preserve the rendered diagram');
+  assert.deepEqual(result.reopened.png.bytes, result.preview.png.bytes, 'Reopening must preserve the rendered diagram');
   assert.equal(result.preview.revision, result.drawing.revision, 'Preview and drawing must show the same document');
   const pngHeader = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
-  const drawing = Buffer.from(result.drawing.png.base64, 'base64');
-  const preview = Buffer.from(result.preview.png.base64, 'base64');
+  const drawing = Buffer.from(result.drawing.png.bytes);
+  const preview = Buffer.from(result.preview.png.bytes);
   assert.deepEqual(drawing.subarray(0, 8), pngHeader);
   assert.deepEqual(preview.subarray(0, 8), pngHeader);
   await mkdir(path.join(root, 'docs/images'), { recursive: true });
